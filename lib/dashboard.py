@@ -259,6 +259,44 @@ RATING_TONE = {
     "Not today": "critical", "Not compelling right now": "critical",
 }
 
+NEWS_TONE_COLOR = {"positive": "var(--good)", "negative": "var(--critical)", "neutral": "var(--warning)"}
+
+
+def news_feed_html(sentiment):
+    """Per-ticker recent-news list -- date, source, headline, tagged by tone
+    (positive/negative/neutral, with a star for the ones flagged as a real
+    catalyst rather than routine noise). sentiment['headline_feed'] is a
+    ROLLING list maintained across refresh cycles by scripts/refresh.py
+    (added 2026-08-25, user-requested) -- not just whatever a single cycle's
+    fetch happened to return, so a real catalyst stays visible here for a
+    few days even on a cycle where that ticker's news feed was thin.
+    Deliberately shows negative/neutral headlines too, not just positive
+    ones -- a research tool that only surfaced good news would be actively
+    misleading about what's driving the price."""
+    feed = (sentiment or {}).get("headline_feed") or []
+    if not feed:
+        return '<div class="empty-note">No recent news found.</div>'
+    items = []
+    for h in feed[:12]:
+        tone = h.get("tone", "neutral")
+        color = NEWS_TONE_COLOR.get(tone, "var(--warning)")
+        title = esc(h.get("title", "") or "")
+        date = esc(h.get("date", "") or "")
+        site = esc(h.get("site", "") or "")
+        url = h.get("url")
+        star = " ★" if h.get("magnitude") else ""
+        headline_html = f'<a href="{esc(url)}" target="_blank" rel="noopener">{title}</a>' if url else title
+        meta = date + (f" — {site}" if site else "")
+        meta_html = f'<span class="news-meta">{meta}</span>' if meta else ""
+        items.append(
+            f'<li class="news-item" style="border-left-color:{color}">'
+            f'<span class="news-tone" style="color:{color}">{tone}{star}</span>'
+            f'{headline_html}'
+            f'{meta_html}'
+            f'</li>'
+        )
+    return f'<ul class="news-feed">{"".join(items)}</ul>'
+
 
 def checklist_row(r, checklist_key, levels_key, entry_label, exit_label, rank, score_key=None, momentum=None):
     cl = r.get(checklist_key) or {}
@@ -315,6 +353,10 @@ def checklist_row(r, checklist_key, levels_key, entry_label, exit_label, rank, s
         <details>
           <summary>Detail</summary>
           <ul class="rationale checklist-detail">{zone_notes}{detail_items}</ul>
+        </details>
+        <details>
+          <summary>News</summary>
+          {news_feed_html(r.get("sentiment"))}
         </details>
       </td>
     </tr>"""
@@ -1114,6 +1156,18 @@ def generate_html(payload=None):
   ul.checklist-detail {{ max-width: 52ch; }}
   ul.checklist-detail li.pass b {{ color: var(--good); }}
   ul.checklist-detail li.fail b {{ color: var(--ink-faint); }}
+
+  ul.news-feed {{ max-width: 52ch; list-style: none; margin: 8px 0 0; padding: 0; }}
+  li.news-item {{
+    border-left: 3px solid var(--warning);
+    padding: 4px 0 4px 10px;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }}
+  li.news-item a {{ color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); }}
+  .news-tone {{ font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; margin-right: 4px; }}
+  .news-meta {{ display: block; color: var(--ink-faint); font-size: 11px; margin-top: 1px; }}
 
   section {{ margin-bottom: 36px; }}
   h2.section-title {{
