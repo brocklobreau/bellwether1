@@ -3,7 +3,7 @@
   "watchlist": [
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
     "JPM", "V", "JNJ", "PG", "KO",
-    "HD", "COST", "UNH", "XOM", "BRK.B"
+    "HD", "COST", "UNH", "XOM", "BRK-B"
   ],
   "screener_universe": [
     "META", "AMD", "NFLX", "ADBE", "CRM",
