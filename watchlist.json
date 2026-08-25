@@ -1,0 +1,14 @@
+{
+  "_comment": "Edit this file any time to change what the system tracks. 'watchlist' gets deep-dived every run. 'screener_universe' is a broader pool of quality non-mega-cap names checked for standout signals -- add/remove tickers freely.",
+  "watchlist": [
+    "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
+    "JPM", "V", "JNJ", "PG", "KO",
+    "HD", "COST", "UNH", "XOM", "BRK.B"
+  ],
+  "screener_universe": [
+    "META", "AMD", "NFLX", "ADBE", "CRM",
+    "LIN", "MA", "PEP", "MCD", "DIS",
+    "AVGO", "TXN", "ORCL", "ABBV", "MRK",
+    "CAT", "GE", "LMT", "SBUX", "NKE"
+  ]
+}

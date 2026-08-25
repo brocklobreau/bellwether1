@@ -1,0 +1,5 @@
+{
+  "account_size": 100000,
+  "risk_per_trade_pct": 1,
+  "_note": "Used by lib/position_sizing.py to size day-trade suggestions. account_size is the paper-trading account balance the user told Claude to assume (2026-08-21); risk_per_trade_pct is the max % of that account risked on a single trade if its stop is hit -- changed from 5 to 1 on 2026-08-21 at the user's request, which also matches the standard professional guideline. Edit these two numbers directly if the account size changes or the user wants a different risk tolerance -- no code change needed."
+}

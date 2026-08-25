@@ -1,0 +1,31 @@
+# Render Blueprint for Bellwether -- the always-on web service version.
+#
+# app.py serves the dashboard AND refreshes its own data on an internal
+# timer (see app.py's docstring) -- one process, no separate GitHub Actions
+# cron job needed. This REQUIRES an always-on (paid) instance: Render's
+# free web services sleep after 15 minutes with no inbound traffic, which
+# would kill the background refresh thread the same way the original
+# Claude-scheduled-task approach silently died (see RUNBOOK.md).
+#
+# If you'd rather not pay for an always-on instance, the alternative is the
+# free combo this repo also supports: .github/workflows/refresh.yml (a real
+# GitHub Actions cron, genuinely free, no sleep concept) does the refresh
+# and commits site/index.html; Render then only needs to be a free Static
+# Site (runtime: static, staticPublishPath: ./site) that redeploys on every
+# commit, same as any static site. Both are just different render.yaml
+# configs -- you don't need app.py for that version at all.
+#
+# To use this version: in the Render dashboard, "New +" -> "Blueprint",
+# point it at this repo. Pick an instance type other than Free when
+# prompted (Starter is the cheapest that stays running).
+services:
+  - type: web
+    name: bellwether-dashboard
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    plan: starter  # cheapest ALWAYS-ON plan -- Free will sleep and break the refresh timer
+    envVars:
+      - key: FMP_API_KEY
+        sync: false  # set this manually in the Render dashboard, never commit it
+    autoDeployTrigger: commit

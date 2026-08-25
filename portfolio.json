@@ -1,0 +1,4 @@
+{
+  "_comment": "Your trade log. Add a buy/sell by telling Claude in chat ('I bought 10 AAPL at $228 on 8/15') or through the Add Trade form on the Portfolio tab of the dashboard itself. side is 'buy' or 'sell'; date is YYYY-MM-DD. P&L is computed automatically (FIFO) -- see the Portfolio tab.",
+  "trades": []
+}

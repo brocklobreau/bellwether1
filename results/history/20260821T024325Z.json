@@ -1,0 +1,4939 @@
+{
+  "watchlist_results": [
+    {
+      "ticker": "AAPL",
+      "name": "Apple Inc.",
+      "price": 311.3,
+      "sector": "Technology",
+      "technical": {
+        "technical_score": 40.8,
+        "rsi": 49.16,
+        "macd_line": -0.51,
+        "macd_signal": 0.457,
+        "macd_hist": -0.967,
+        "sma20": 315.52,
+        "sma50": null,
+        "momentum_10d_pct": -0.36,
+        "range_position_pct": 72.5,
+        "volatility_pct": 1.51,
+        "recent_low_20d": 302.25,
+        "recent_high_20d": 340.08,
+        "notes": [
+          "RSI 49.16 \u2014 neutral momentum.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -0.36%.",
+          "Trading at 72.5% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 68.4,
+        "pe_ratio": 34.11,
+        "forward_pe": null,
+        "revenue_growth_pct": 6.43,
+        "profit_margin_pct": 26.92,
+        "dividend_yield_pct": 0.33,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 9.45,
+        "market_cap_usd": 4572173922800,
+        "sector": "Technology",
+        "notes": [
+          "P/E 34.11 \u2014 priced for continued growth.",
+          "Revenue growth: +6.4% YoY.",
+          "Profit margin 26.9%.",
+          "Dividend yield 0.33%.",
+          "Analyst consensus: Buy, price target implies +9.4% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 56.2,
+        "big_news": true,
+        "flagged_headlines": [
+          "Apple must relearn how to surprise under new CEO Ternus, says BofA",
+          "Apple has gotten too predictable. Can its next CEO bring back the element of surprise?"
+        ],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral.",
+          "Potentially significant headline(s): Apple must relearn how to surprise under new CEO Ternus, says BofA; Apple has gotten too predictable. Can its next CEO bring back the element of surprise?"
+        ]
+      },
+      "insider": {
+        "insider_score": 42,
+        "insider_buys": 0,
+        "insider_sells": 7,
+        "insider_buy_value": 0,
+        "insider_sell_value": 88029748.91,
+        "notes": [
+          "3 different insiders sold a combined $88,029,749 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          223.78,
+          302.25
+        ],
+        "exit_zone": [
+          340.08,
+          344.57
+        ],
+        "stop": 205.88,
+        "analyst_target": 340.72,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($223.78-$302.25) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($340.08-$344.57) is anchored to its 52-week high.",
+          "Suggested protective stop: $205.88 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          223.78,
+          302.25
+        ],
+        "exit_zone": [
+          340.08,
+          344.57
+        ],
+        "stop": 205.88,
+        "analyst_target": 340.72,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($223.78-$302.25) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($340.08-$344.57) is anchored to its 52-week high.",
+          "Suggested protective stop: $205.88 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          302.25,
+          305.59
+        ],
+        "exit_zone": [
+          316.83,
+          321.61
+        ],
+        "stop": 297.69,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($302.25-$305.59) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($316.83-$321.61) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $297.69 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $4,572B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 1.5%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 49.16 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 34.11 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +6.4% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 26.9%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 53.7,
+      "signal": "HOLD",
+      "confidence": 7.0,
+      "technical_score": 40.8,
+      "fundamental_score": 68.4,
+      "sentiment_score": 56.2,
+      "insider_score": 42,
+      "rationale": [
+        "RSI 49.16 \u2014 neutral momentum.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -0.36%.",
+        "Trading at 72.5% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 34.11 \u2014 priced for continued growth.",
+        "Revenue growth: +6.4% YoY.",
+        "Profit margin 26.9%.",
+        "Dividend yield 0.33%.",
+        "Analyst consensus: Buy, price target implies +9.4% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Potentially significant headline(s): Apple must relearn how to surprise under new CEO Ternus, says BofA; Apple has gotten too predictable. Can its next CEO bring back the element of surprise?",
+        "3 different insiders sold a combined $88,029,749 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+      ],
+      "data_source": "FMP",
+      "noteworthy": true,
+      "noteworthy_reasons": [
+        "Notable headline: Apple must relearn how to surprise under new CEO Ternus, says BofA"
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "name": "Microsoft Corp.",
+      "price": 481.15,
+      "sector": "Technology",
+      "technical": {
+        "technical_score": 46.1,
+        "rsi": 61.53,
+        "macd_line": 22.743,
+        "macd_signal": 26.092,
+        "macd_hist": -3.349,
+        "sma20": 468.01,
+        "sma50": null,
+        "momentum_10d_pct": -3.74,
+        "range_position_pct": 64.5,
+        "volatility_pct": 2.08,
+        "recent_low_20d": 381.7,
+        "recent_high_20d": 506.06,
+        "notes": [
+          "RSI 61.53 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is above its 20-day average.",
+          "10-day momentum: -3.74%.",
+          "Trading at 64.5% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 81.8,
+        "pe_ratio": 20.72,
+        "forward_pe": null,
+        "revenue_growth_pct": 17.79,
+        "profit_margin_pct": 40.31,
+        "dividend_yield_pct": 0.74,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 13.84,
+        "market_cap_usd": 3572803382500,
+        "sector": "Technology",
+        "notes": [
+          "P/E 20.72 \u2014 reasonably valued.",
+          "Revenue growth: +17.8% YoY.",
+          "Profit margin 40.3%.",
+          "Dividend yield 0.74%.",
+          "Analyst consensus: Buy, price target implies +13.8% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 42,
+        "insider_buys": 0,
+        "insider_sells": 3,
+        "insider_buy_value": 0,
+        "insider_sell_value": 7311286.46,
+        "notes": [
+          "3 different insiders sold a combined $7,311,286 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          349.2,
+          468.01
+        ],
+        "exit_zone": [
+          506.06,
+          553.72
+        ],
+        "stop": 321.26,
+        "analyst_target": 547.74,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($349.20-$468.01) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($506.06-$553.72) is anchored to its 52-week high.",
+          "Suggested protective stop: $321.26 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          349.2,
+          468.01
+        ],
+        "exit_zone": [
+          506.06,
+          553.72
+        ],
+        "stop": 321.26,
+        "analyst_target": 547.74,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($349.20-$468.01) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($506.06-$553.72) is anchored to its 52-week high.",
+          "Suggested protective stop: $321.26 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          470.36,
+          480.35
+        ],
+        "exit_zone": [
+          495.4,
+          506.06
+        ],
+        "stop": 460.58,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($470.36-$480.35) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($495.40-$506.06) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $460.58 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $3,573B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 2.1%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 61.53 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": false,
+            "detail": "Short-term trend and momentum are pulling different ways (or data's missing)."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 20.72 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +17.8% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 40.3%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 58.8,
+      "signal": "HOLD",
+      "confidence": 18.0,
+      "technical_score": 46.1,
+      "fundamental_score": 81.8,
+      "sentiment_score": 50.0,
+      "insider_score": 42,
+      "rationale": [
+        "RSI 61.53 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is above its 20-day average.",
+        "10-day momentum: -3.74%.",
+        "Trading at 64.5% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 20.72 \u2014 reasonably valued.",
+        "Revenue growth: +17.8% YoY.",
+        "Profit margin 40.3%.",
+        "Dividend yield 0.74%.",
+        "Analyst consensus: Buy, price target implies +13.8% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "3 different insiders sold a combined $7,311,286 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "GOOGL",
+      "name": "Alphabet Inc.",
+      "price": 340.67,
+      "sector": "Communication Services",
+      "technical": {
+        "technical_score": 40.2,
+        "rsi": 44.15,
+        "macd_line": -2.133,
+        "macd_signal": -1.269,
+        "macd_hist": -0.865,
+        "sma20": 347.14,
+        "sma50": null,
+        "momentum_10d_pct": -4.77,
+        "range_position_pct": 67.5,
+        "volatility_pct": 1.67,
+        "recent_low_20d": 319.74,
+        "recent_high_20d": 377.65,
+        "notes": [
+          "RSI 44.15 \u2014 neutral momentum.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -4.77%.",
+          "Trading at 67.5% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 77.5,
+        "pe_ratio": 28.69,
+        "forward_pe": null,
+        "revenue_growth_pct": 15.09,
+        "profit_margin_pct": 32.81,
+        "dividend_yield_pct": 0.24,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 25.68,
+        "market_cap_usd": 4122826251802,
+        "sector": "Communication Services",
+        "notes": [
+          "P/E 28.69 \u2014 priced for continued growth.",
+          "Revenue growth: +15.1% YoY.",
+          "Profit margin 32.8%.",
+          "Dividend yield 0.24%.",
+          "Analyst consensus: Buy, price target implies +25.7% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 50,
+        "insider_buys": 0,
+        "insider_sells": 2,
+        "insider_buy_value": 0,
+        "insider_sell_value": 176944.78,
+        "notes": [
+          "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          199.43,
+          319.74
+        ],
+        "exit_zone": [
+          377.65,
+          428.15
+        ],
+        "stop": 183.48,
+        "analyst_target": 428.15,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($199.43-$319.74) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($377.65-$428.15) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $183.48 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          199.43,
+          319.74
+        ],
+        "exit_zone": [
+          377.65,
+          428.15
+        ],
+        "stop": 183.48,
+        "analyst_target": 428.15,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($199.43-$319.74) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($377.65-$428.15) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $183.48 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          333.84,
+          338.96
+        ],
+        "exit_zone": [
+          345.9,
+          357.52
+        ],
+        "stop": 328.26,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~1.7%/day) instead of a real pullback level.",
+          "Target zone ($345.90-$357.52) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $328.26 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $4,123B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 1.7%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 44.15 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 28.69 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +15.1% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 32.8%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 56.7,
+      "signal": "HOLD",
+      "confidence": 13.0,
+      "technical_score": 40.2,
+      "fundamental_score": 77.5,
+      "sentiment_score": 50.0,
+      "insider_score": 50,
+      "rationale": [
+        "RSI 44.15 \u2014 neutral momentum.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -4.77%.",
+        "Trading at 67.5% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 28.69 \u2014 priced for continued growth.",
+        "Revenue growth: +15.1% YoY.",
+        "Profit margin 32.8%.",
+        "Dividend yield 0.24%.",
+        "Analyst consensus: Buy, price target implies +25.7% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "AMZN",
+      "name": "Amazon.com, Inc.",
+      "price": 260.11,
+      "sector": "Consumer Cyclical",
+      "technical": {
+        "technical_score": 46.9,
+        "rsi": 51.21,
+        "macd_line": 4.766,
+        "macd_signal": 6.326,
+        "macd_hist": -1.559,
+        "sma20": 260.05,
+        "sma50": null,
+        "momentum_10d_pct": -4.46,
+        "range_position_pct": 70.3,
+        "volatility_pct": 2.23,
+        "recent_low_20d": 226.65,
+        "recent_high_20d": 284.02,
+        "notes": [
+          "RSI 51.21 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is above its 20-day average.",
+          "10-day momentum: -4.46%.",
+          "Trading at 70.3% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 65.5,
+        "pe_ratio": 31.66,
+        "forward_pe": null,
+        "revenue_growth_pct": 12.38,
+        "profit_margin_pct": 10.83,
+        "dividend_yield_pct": 0.0,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 26.51,
+        "market_cap_usd": 2798029281000,
+        "sector": "Consumer Cyclical",
+        "notes": [
+          "P/E 31.66 \u2014 priced for continued growth.",
+          "Revenue growth: +12.4% YoY.",
+          "Profit margin 10.8%.",
+          "Analyst consensus: Buy, price target implies +26.5% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 42,
+        "insider_buys": 0,
+        "insider_sells": 11,
+        "insider_buy_value": 0,
+        "insider_sell_value": 353223009.25,
+        "notes": [
+          "3 different insiders sold a combined $353,223,009 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          196,
+          260.05
+        ],
+        "exit_zone": [
+          284.02,
+          329.07
+        ],
+        "stop": 180.32,
+        "analyst_target": 329.07,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($196.00-$260.05) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($284.02-$329.07) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $180.32 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          196,
+          260.05
+        ],
+        "exit_zone": [
+          284.02,
+          329.07
+        ],
+        "stop": 180.32,
+        "analyst_target": 329.07,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($196.00-$260.05) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($284.02-$329.07) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $180.32 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          253.66,
+          259.45
+        ],
+        "exit_zone": [
+          265.84,
+          278.09
+        ],
+        "stop": 248.0,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($253.66-$259.45) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($265.84-$278.09) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $248.00 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $2,798B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 2.2%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 51.21 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": false,
+            "detail": "Short-term trend and momentum are pulling different ways (or data's missing)."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 2,
+        "total": 6,
+        "rating": "Not today"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 31.66 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +12.4% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 10.8%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 53.3,
+      "signal": "HOLD",
+      "confidence": 7.0,
+      "technical_score": 46.9,
+      "fundamental_score": 65.5,
+      "sentiment_score": 50.0,
+      "insider_score": 42,
+      "rationale": [
+        "RSI 51.21 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is above its 20-day average.",
+        "10-day momentum: -4.46%.",
+        "Trading at 70.3% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 31.66 \u2014 priced for continued growth.",
+        "Revenue growth: +12.4% YoY.",
+        "Profit margin 10.8%.",
+        "Analyst consensus: Buy, price target implies +26.5% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "3 different insiders sold a combined $353,223,009 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "NVDA",
+      "name": "NVIDIA Corp.",
+      "price": 216.85,
+      "sector": "Technology",
+      "technical": {
+        "technical_score": 51.4,
+        "rsi": 53.37,
+        "macd_line": 4.548,
+        "macd_signal": 4.6,
+        "macd_hist": -0.052,
+        "sma20": 212.78,
+        "sma50": 207.25,
+        "momentum_10d_pct": -0.98,
+        "range_position_pct": 72.8,
+        "volatility_pct": 1.84,
+        "recent_low_20d": 190.01,
+        "recent_high_20d": 225.3,
+        "notes": [
+          "RSI 53.37 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+          "10-day momentum: -0.98%.",
+          "Trading at 72.8% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 72.0,
+        "pe_ratio": 37.82,
+        "forward_pe": null,
+        "revenue_growth_pct": 65.47,
+        "profit_margin_pct": 55.6,
+        "dividend_yield_pct": 0.02,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 47.07,
+        "market_cap_usd": 5252323850000,
+        "sector": "Technology",
+        "notes": [
+          "P/E 37.82 \u2014 expensive, priced for a lot to go right.",
+          "Revenue growth: +65.5% YoY.",
+          "Profit margin 55.6%.",
+          "Dividend yield 0.02%.",
+          "Analyst consensus: Buy, price target implies +47.1% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 56.2,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 50,
+        "insider_buys": 0,
+        "insider_sells": 1,
+        "insider_buy_value": 0,
+        "insider_sell_value": 66973501.45,
+        "notes": [
+          "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          164.07,
+          212.78
+        ],
+        "exit_zone": [
+          225.3,
+          318.92
+        ],
+        "stop": 150.94,
+        "analyst_target": 318.92,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($164.07-$212.78) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($225.30-$318.92) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $150.94 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          164.07,
+          212.78
+        ],
+        "exit_zone": [
+          225.3,
+          318.92
+        ],
+        "stop": 150.94,
+        "analyst_target": 318.92,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($164.07-$212.78) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($225.30-$318.92) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $150.94 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          212.06,
+          215.65
+        ],
+        "exit_zone": [
+          225.16,
+          225.3
+        ],
+        "stop": 208.16,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~1.8%/day) instead of a real pullback level.",
+          "Target zone ($225.16-$225.30) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $208.16 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $5,252B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 1.8%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 53.37 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": false,
+            "detail": "Short-term trend and momentum are pulling different ways (or data's missing)."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 2,
+        "total": 6,
+        "rating": "Not today"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 37.82 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +65.5% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 55.6%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": true,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 6,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 59.4,
+      "signal": "HOLD",
+      "confidence": 19.0,
+      "technical_score": 51.4,
+      "fundamental_score": 72.0,
+      "sentiment_score": 56.2,
+      "insider_score": 50,
+      "rationale": [
+        "RSI 53.37 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+        "10-day momentum: -0.98%.",
+        "Trading at 72.8% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 37.82 \u2014 expensive, priced for a lot to go right.",
+        "Revenue growth: +65.5% YoY.",
+        "Profit margin 55.6%.",
+        "Dividend yield 0.02%.",
+        "Analyst consensus: Buy, price target implies +47.1% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "JPM",
+      "name": "JPMorgan Chase & Co.",
+      "price": 351.55,
+      "sector": "Financial Services",
+      "technical": {
+        "technical_score": 42.8,
+        "rsi": 48.01,
+        "macd_line": 4.336,
+        "macd_signal": 5.754,
+        "macd_hist": -1.418,
+        "sma20": 357.39,
+        "sma50": null,
+        "momentum_10d_pct": -1.67,
+        "range_position_pct": 82.9,
+        "volatility_pct": 0.86,
+        "recent_low_20d": 344.71,
+        "recent_high_20d": 365.18,
+        "notes": [
+          "RSI 48.01 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -1.67%.",
+          "Trading at 82.9% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 68.0,
+        "pe_ratio": 16.04,
+        "forward_pe": null,
+        "revenue_growth_pct": 3.31,
+        "profit_margin_pct": 20.39,
+        "dividend_yield_pct": 1.7,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 6.28,
+        "market_cap_usd": 941981740500,
+        "sector": "Financial Services",
+        "notes": [
+          "P/E 16.04 \u2014 reasonably valued.",
+          "Revenue growth: +3.3% YoY.",
+          "Profit margin 20.4%.",
+          "Dividend yield 1.70%.",
+          "Analyst consensus: Buy, price target implies +6.3% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 43.8,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 42,
+        "insider_buys": 0,
+        "insider_sells": 4,
+        "insider_buy_value": 0,
+        "insider_sell_value": 6337021.25,
+        "notes": [
+          "3 different insiders sold a combined $6,337,021 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          279.1,
+          344.71
+        ],
+        "exit_zone": [
+          365.18,
+          373.63
+        ],
+        "stop": 256.77,
+        "analyst_target": 373.63,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($279.10-$344.71) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($365.18-$373.63) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $256.77 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          279.1,
+          344.71
+        ],
+        "exit_zone": [
+          365.18,
+          373.63
+        ],
+        "stop": 256.77,
+        "analyst_target": 373.63,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($279.10-$344.71) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($365.18-$373.63) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $256.77 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          347.92,
+          350.64
+        ],
+        "exit_zone": [
+          363.25,
+          365.18
+        ],
+        "stop": 344.93,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~0.9%/day) instead of a real pullback level.",
+          "Target zone ($363.25-$365.18) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $344.93 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $942B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 0.9%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 48.01 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 2,
+        "total": 6,
+        "rating": "Not today"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 16.04 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up +3.3% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 20.4%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 51.7,
+      "signal": "HOLD",
+      "confidence": 3.0,
+      "technical_score": 42.8,
+      "fundamental_score": 68.0,
+      "sentiment_score": 43.8,
+      "insider_score": 42,
+      "rationale": [
+        "RSI 48.01 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -1.67%.",
+        "Trading at 82.9% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 16.04 \u2014 reasonably valued.",
+        "Revenue growth: +3.3% YoY.",
+        "Profit margin 20.4%.",
+        "Dividend yield 1.70%.",
+        "Analyst consensus: Buy, price target implies +6.3% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "3 different insiders sold a combined $6,337,021 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "V",
+      "name": "Visa Inc.",
+      "price": 365.73,
+      "sector": "Financial Services",
+      "technical": {
+        "technical_score": 47.2,
+        "rsi": 57.1,
+        "macd_line": 3.314,
+        "macd_signal": 4.407,
+        "macd_hist": -1.093,
+        "sma20": 364.94,
+        "sma50": null,
+        "momentum_10d_pct": 0.89,
+        "range_position_pct": 89.7,
+        "volatility_pct": 0.82,
+        "recent_low_20d": 358.84,
+        "recent_high_20d": 370.47,
+        "notes": [
+          "RSI 57.1 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is above its 20-day average.",
+          "10-day momentum: +0.89%.",
+          "Trading at 89.7% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 74.4,
+        "pe_ratio": 33.4,
+        "forward_pe": null,
+        "revenue_growth_pct": 11.34,
+        "profit_margin_pct": 50.14,
+        "dividend_yield_pct": 0.65,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 14.18,
+        "market_cap_usd": 682835176479,
+        "sector": "Financial Services",
+        "notes": [
+          "P/E 33.4 \u2014 priced for continued growth.",
+          "Revenue growth: +11.3% YoY.",
+          "Profit margin 50.1%.",
+          "Dividend yield 0.65%.",
+          "Analyst consensus: Buy, price target implies +14.2% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 56.2,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 50,
+        "insider_buys": 0,
+        "insider_sells": 3,
+        "insider_buy_value": 0,
+        "insider_sell_value": 21632059.92,
+        "notes": [
+          "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          293.89,
+          364.94
+        ],
+        "exit_zone": [
+          370.47,
+          417.59
+        ],
+        "stop": 270.38,
+        "analyst_target": 417.59,
+        "in_entry_zone": true,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($293.89-$364.94) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($370.47-$417.59) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $270.38 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          293.89,
+          364.94
+        ],
+        "exit_zone": [
+          370.47,
+          417.59
+        ],
+        "stop": 270.38,
+        "analyst_target": 417.59,
+        "in_entry_zone": true,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($293.89-$364.94) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($370.47-$417.59) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $270.38 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          355.9,
+          358.84
+        ],
+        "exit_zone": [
+          368.13,
+          371.73
+        ],
+        "stop": 352.98,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($355.90-$358.84) uses the last 5-10 sessions' pullback lows.",
+          "Price is already through its recent short-term highs, so the target zone is sized off volatility (~0.8%/day) instead.",
+          "Tight stop $352.98 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $683B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 0.8%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 57.1 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": false,
+            "detail": "Short-term trend and momentum are pulling different ways (or data's missing)."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 1,
+        "total": 6,
+        "rating": "Not today"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 33.4 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +11.3% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 50.1%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 58.9,
+      "signal": "HOLD",
+      "confidence": 18.0,
+      "technical_score": 47.2,
+      "fundamental_score": 74.4,
+      "sentiment_score": 56.2,
+      "insider_score": 50,
+      "rationale": [
+        "RSI 57.1 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is above its 20-day average.",
+        "10-day momentum: +0.89%.",
+        "Trading at 89.7% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 33.4 \u2014 priced for continued growth.",
+        "Revenue growth: +11.3% YoY.",
+        "Profit margin 50.1%.",
+        "Dividend yield 0.65%.",
+        "Analyst consensus: Buy, price target implies +14.2% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "JNJ",
+      "name": "Johnson & Johnson",
+      "price": 267.37,
+      "sector": "Healthcare",
+      "technical": {
+        "technical_score": 55.4,
+        "rsi": 58.6,
+        "macd_line": 3.888,
+        "macd_signal": 3.14,
+        "macd_hist": 0.748,
+        "sma20": 261.8,
+        "sma50": null,
+        "momentum_10d_pct": 4.04,
+        "range_position_pct": 91.2,
+        "volatility_pct": 1.04,
+        "recent_low_20d": 254.41,
+        "recent_high_20d": 273.41,
+        "notes": [
+          "RSI 58.6 \u2014 neutral momentum.",
+          "MACD bullish: line above signal and above zero.",
+          "Price is above its 20-day average.",
+          "10-day momentum: +4.04%.",
+          "Trading at 91.2% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 73.2,
+        "pe_ratio": 18.82,
+        "forward_pe": null,
+        "revenue_growth_pct": 6.05,
+        "profit_margin_pct": 28.46,
+        "dividend_yield_pct": 1.91,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 5.5,
+        "market_cap_usd": 644334539486,
+        "sector": "Healthcare",
+        "notes": [
+          "P/E 18.82 \u2014 reasonably valued.",
+          "Revenue growth: +6.0% YoY.",
+          "Profit margin 28.5%.",
+          "Dividend yield 1.91%.",
+          "Analyst consensus: Buy, price target implies +5.5% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 42,
+        "insider_buys": 0,
+        "insider_sells": 7,
+        "insider_buy_value": 0,
+        "insider_sell_value": 52756296.78,
+        "notes": [
+          "3 different insiders sold a combined $52,756,297 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          173.33,
+          261.8
+        ],
+        "exit_zone": [
+          273.41,
+          282.08
+        ],
+        "stop": 159.46,
+        "analyst_target": 282.08,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($173.33-$261.80) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($273.41-$282.08) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $159.46 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          173.33,
+          261.8
+        ],
+        "exit_zone": [
+          273.41,
+          282.08
+        ],
+        "stop": 159.46,
+        "analyst_target": 282.08,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($173.33-$261.80) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($273.41-$282.08) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $159.46 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          259.24,
+          260.35
+        ],
+        "exit_zone": [
+          273.41,
+          276.25
+        ],
+        "stop": 256.54,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($259.24-$260.35) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($273.41-$276.25) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $256.54 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $644B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 1.0%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 58.6 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 2,
+        "total": 6,
+        "rating": "Not today"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 18.82 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +6.0% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 28.5%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 58.5,
+      "signal": "HOLD",
+      "confidence": 17.0,
+      "technical_score": 55.4,
+      "fundamental_score": 73.2,
+      "sentiment_score": 50.0,
+      "insider_score": 42,
+      "rationale": [
+        "RSI 58.6 \u2014 neutral momentum.",
+        "MACD bullish: line above signal and above zero.",
+        "Price is above its 20-day average.",
+        "10-day momentum: +4.04%.",
+        "Trading at 91.2% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 18.82 \u2014 reasonably valued.",
+        "Revenue growth: +6.0% YoY.",
+        "Profit margin 28.5%.",
+        "Dividend yield 1.91%.",
+        "Analyst consensus: Buy, price target implies +5.5% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "3 different insiders sold a combined $52,756,297 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "PG",
+      "name": "Procter & Gamble Co.",
+      "price": 143.01,
+      "sector": "Consumer Defensive",
+      "technical": {
+        "technical_score": 42.7,
+        "rsi": 40.95,
+        "macd_line": -1.236,
+        "macd_signal": -1.094,
+        "macd_hist": -0.142,
+        "sma20": 145.5,
+        "sma50": null,
+        "momentum_10d_pct": -2.69,
+        "range_position_pct": 18.2,
+        "volatility_pct": 0.73,
+        "recent_low_20d": 143.01,
+        "recent_high_20d": 148.88,
+        "notes": [
+          "RSI 40.95 \u2014 neutral momentum.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -2.69%.",
+          "Trading at 18.2% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 68.2,
+        "pe_ratio": 21.72,
+        "forward_pe": null,
+        "revenue_growth_pct": 3.26,
+        "profit_margin_pct": 18.44,
+        "dividend_yield_pct": 2.95,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 10.87,
+        "market_cap_usd": 339964650080,
+        "sector": "Consumer Defensive",
+        "notes": [
+          "P/E 21.72 \u2014 reasonably valued.",
+          "Revenue growth: +3.3% YoY.",
+          "Profit margin 18.4%.",
+          "Dividend yield 2.95%.",
+          "Analyst consensus: Buy, price target implies +10.9% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": true,
+        "flagged_headlines": [
+          "Bridgewater Advisors Inc. Acquires Shares of 23,745 Procter & Gamble Company (The) $PG",
+          "Avalon Trust Co Acquires New Position in Procter & Gamble Company (The) $PG"
+        ],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral.",
+          "Potentially significant headline(s): Bridgewater Advisors Inc. Acquires Shares of 23,745 Procter & Gamble Company (The) $PG; Avalon Trust Co Acquires New Position in Procter & Gamble Company (The) $PG"
+        ]
+      },
+      "insider": {
+        "insider_score": 50,
+        "insider_buys": 0,
+        "insider_sells": 1,
+        "insider_buy_value": 0,
+        "insider_sell_value": 1244736,
+        "notes": [
+          "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          130.74,
+          137.62
+        ],
+        "exit_zone": [
+          148.88,
+          167.25
+        ],
+        "stop": 120.28,
+        "analyst_target": 158.56,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($130.74-$137.62) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($148.88-$167.25) is anchored to its 52-week high.",
+          "Suggested protective stop: $120.28 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          130.74,
+          137.62
+        ],
+        "exit_zone": [
+          148.88,
+          167.25
+        ],
+        "stop": 120.28,
+        "analyst_target": 158.56,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($130.74-$137.62) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($148.88-$167.25) is anchored to its 52-week high.",
+          "Suggested protective stop: $120.28 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          141.76,
+          142.7
+        ],
+        "exit_zone": [
+          144.55,
+          146.44
+        ],
+        "stop": 140.73,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~0.7%/day) instead of a real pullback level.",
+          "Target zone ($144.55-$146.44) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $140.73 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $340B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 0.7%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 40.95 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 21.72 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up +3.3% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 18.4%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 54.2,
+      "signal": "HOLD",
+      "confidence": 8.0,
+      "technical_score": 42.7,
+      "fundamental_score": 68.2,
+      "sentiment_score": 50.0,
+      "insider_score": 50,
+      "rationale": [
+        "RSI 40.95 \u2014 neutral momentum.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -2.69%.",
+        "Trading at 18.2% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 21.72 \u2014 reasonably valued.",
+        "Revenue growth: +3.3% YoY.",
+        "Profit margin 18.4%.",
+        "Dividend yield 2.95%.",
+        "Analyst consensus: Buy, price target implies +10.9% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Potentially significant headline(s): Bridgewater Advisors Inc. Acquires Shares of 23,745 Procter & Gamble Company (The) $PG; Avalon Trust Co Acquires New Position in Procter & Gamble Company (The) $PG",
+        "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "KO",
+      "name": "Coca-Cola Co.",
+      "price": 90.5,
+      "sector": "Consumer Defensive",
+      "technical": {
+        "technical_score": 54.2,
+        "rsi": 68.57,
+        "macd_line": 1.532,
+        "macd_signal": 1.326,
+        "macd_hist": 0.206,
+        "sma20": 87.29,
+        "sma50": null,
+        "momentum_10d_pct": 4.2,
+        "range_position_pct": 94.9,
+        "volatility_pct": 0.99,
+        "recent_low_20d": 82.25,
+        "recent_high_20d": 90.5,
+        "notes": [
+          "RSI 68.57 \u2014 neutral momentum.",
+          "MACD bullish: line above signal and above zero.",
+          "Price is above its 20-day average.",
+          "10-day momentum: +4.20%.",
+          "Trading at 94.9% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 70.2,
+        "pe_ratio": 22.92,
+        "forward_pe": null,
+        "revenue_growth_pct": 1.87,
+        "profit_margin_pct": 27.34,
+        "dividend_yield_pct": 2.25,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 5.8,
+        "market_cap_usd": 389380678527,
+        "sector": "Consumer Defensive",
+        "notes": [
+          "P/E 22.92 \u2014 reasonably valued.",
+          "Revenue growth: +1.9% YoY.",
+          "Profit margin 27.3%.",
+          "Dividend yield 2.25%.",
+          "Analyst consensus: Buy, price target implies +5.8% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 56.2,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 42,
+        "insider_buys": 0,
+        "insider_sells": 4,
+        "insider_buy_value": 0,
+        "insider_sell_value": 19002841.71,
+        "notes": [
+          "3 different insiders sold a combined $19,002,842 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          65.35,
+          87.29
+        ],
+        "exit_zone": [
+          91.86,
+          95.75
+        ],
+        "stop": 60.12,
+        "analyst_target": 95.75,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($65.35-$87.29) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($91.86-$95.75) is anchored to the analyst consensus price target and its 52-week high.",
+          "Suggested protective stop: $60.12 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          65.35,
+          87.29
+        ],
+        "exit_zone": [
+          91.86,
+          95.75
+        ],
+        "stop": 60.12,
+        "analyst_target": 95.75,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($65.35-$87.29) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($91.86-$95.75) is anchored to the analyst consensus price target and its 52-week high.",
+          "Suggested protective stop: $60.12 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          86.48,
+          86.98
+        ],
+        "exit_zone": [
+          91.22,
+          92.29
+        ],
+        "stop": 85.62,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($86.48-$86.98) uses the last 5-10 sessions' pullback lows.",
+          "Price is already through its recent short-term highs, so the target zone is sized off volatility (~1.0%/day) instead.",
+          "Tight stop $85.62 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $389B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 1.0%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 68.57 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 22.92 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up +1.9% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 27.3%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 58.4,
+      "signal": "HOLD",
+      "confidence": 17.0,
+      "technical_score": 54.2,
+      "fundamental_score": 70.2,
+      "sentiment_score": 56.2,
+      "insider_score": 42,
+      "rationale": [
+        "RSI 68.57 \u2014 neutral momentum.",
+        "MACD bullish: line above signal and above zero.",
+        "Price is above its 20-day average.",
+        "10-day momentum: +4.20%.",
+        "Trading at 94.9% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 22.92 \u2014 reasonably valued.",
+        "Revenue growth: +1.9% YoY.",
+        "Profit margin 27.3%.",
+        "Dividend yield 2.25%.",
+        "Analyst consensus: Buy, price target implies +5.8% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "3 different insiders sold a combined $19,002,842 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "HD",
+      "name": "Home Depot, Inc.",
+      "price": 334.49,
+      "sector": "Consumer Cyclical",
+      "technical": {
+        "technical_score": 41.5,
+        "rsi": 43.52,
+        "macd_line": -1.256,
+        "macd_signal": -0.738,
+        "macd_hist": -0.518,
+        "sma20": 342.35,
+        "sma50": null,
+        "momentum_10d_pct": -4.3,
+        "range_position_pct": 33.0,
+        "volatility_pct": 1.54,
+        "recent_low_20d": 331.96,
+        "recent_high_20d": 355.62,
+        "notes": [
+          "RSI 43.52 \u2014 neutral momentum.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -4.30%.",
+          "Trading at 33.0% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 59.8,
+        "pe_ratio": 26.5,
+        "forward_pe": null,
+        "revenue_growth_pct": 3.24,
+        "profit_margin_pct": 8.6,
+        "dividend_yield_pct": 2.76,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 14.4,
+        "market_cap_usd": 333525665330,
+        "sector": "Consumer Cyclical",
+        "notes": [
+          "P/E 26.5 \u2014 priced for continued growth.",
+          "Revenue growth: +3.2% YoY.",
+          "Profit margin 8.6%.",
+          "Dividend yield 2.76%.",
+          "Analyst consensus: Buy, price target implies +14.4% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": true,
+        "flagged_headlines": [
+          "Walmart's 10% Plunge Weighs on All Three Major Indexes"
+        ],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral.",
+          "Potentially significant headline(s): Walmart's 10% Plunge Weighs on All Three Major Indexes"
+        ]
+      },
+      "insider": {
+        "insider_score": null,
+        "insider_buys": 0,
+        "insider_sells": 0,
+        "insider_buy_value": 0.0,
+        "insider_sell_value": 0.0,
+        "notes": []
+      },
+      "price_levels": {
+        "entry_zone": [
+          289.1,
+          331.96
+        ],
+        "exit_zone": [
+          355.62,
+          426.75
+        ],
+        "stop": 265.97,
+        "analyst_target": 382.66,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($289.10-$331.96) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($355.62-$426.75) is anchored to its 52-week high.",
+          "Suggested protective stop: $265.97 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          289.1,
+          331.96
+        ],
+        "exit_zone": [
+          355.62,
+          426.75
+        ],
+        "stop": 265.97,
+        "analyst_target": 382.66,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($289.10-$331.96) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($355.62-$426.75) is anchored to its 52-week high.",
+          "Suggested protective stop: $265.97 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          328.31,
+          332.94
+        ],
+        "exit_zone": [
+          344.3,
+          355.62
+        ],
+        "stop": 323.25,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~1.5%/day) instead of a real pullback level.",
+          "Target zone ($344.30-$355.62) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $323.25 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $334B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 1.5%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 43.52 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 26.5 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up +3.2% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Profit margin 8.6%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 51.0,
+      "signal": "HOLD",
+      "confidence": 2.0,
+      "technical_score": 41.5,
+      "fundamental_score": 59.8,
+      "sentiment_score": 50.0,
+      "insider_score": null,
+      "rationale": [
+        "RSI 43.52 \u2014 neutral momentum.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -4.30%.",
+        "Trading at 33.0% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 26.5 \u2014 priced for continued growth.",
+        "Revenue growth: +3.2% YoY.",
+        "Profit margin 8.6%.",
+        "Dividend yield 2.76%.",
+        "Analyst consensus: Buy, price target implies +14.4% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Potentially significant headline(s): Walmart's 10% Plunge Weighs on All Three Major Indexes"
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "COST",
+      "name": "Costco Wholesale Corp.",
+      "price": 933.51,
+      "sector": "Consumer Defensive",
+      "technical": {
+        "technical_score": 44.8,
+        "rsi": 42.52,
+        "macd_line": 3.757,
+        "macd_signal": 5.616,
+        "macd_hist": -1.859,
+        "sma20": 953.2,
+        "sma50": null,
+        "momentum_10d_pct": -1.72,
+        "range_position_pct": 35.4,
+        "volatility_pct": 0.84,
+        "recent_low_20d": 933.51,
+        "recent_high_20d": 974.03,
+        "notes": [
+          "RSI 42.52 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -1.72%.",
+          "Trading at 35.4% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 49.8,
+        "pe_ratio": 51.72,
+        "forward_pe": null,
+        "revenue_growth_pct": 8.17,
+        "profit_margin_pct": 2.94,
+        "dividend_yield_pct": 0.53,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 18.22,
+        "market_cap_usd": 413992081290,
+        "sector": "Consumer Defensive",
+        "notes": [
+          "P/E 51.72 \u2014 very expensive by historical norms.",
+          "Revenue growth: +8.2% YoY.",
+          "Profit margin 2.9%.",
+          "Dividend yield 0.53%.",
+          "Analyst consensus: Buy, price target implies +18.2% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": true,
+        "flagged_headlines": [
+          "First Look: Walmart, Meta, Target, and Fed News Move Markets",
+          "Daiwa Securities Group Inc. Acquires 6,139 Shares of Costco Wholesale Corporation $COST"
+        ],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral.",
+          "Potentially significant headline(s): First Look: Walmart, Meta, Target, and Fed News Move Markets; Daiwa Securities Group Inc. Acquires 6,139 Shares of Costco Wholesale Corporation $COST"
+        ]
+      },
+      "insider": {
+        "insider_score": 42,
+        "insider_buys": 0,
+        "insider_sells": 5,
+        "insider_buy_value": 0,
+        "insider_sell_value": 3550358.99,
+        "notes": [
+          "5 different insiders sold a combined $3,550,359 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          844.06,
+          912.97
+        ],
+        "exit_zone": [
+          974.03,
+          1103.6
+        ],
+        "stop": 776.54,
+        "analyst_target": 1103.6,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($844.06-$912.97) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($974.03-$1,103.60) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $776.54 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          844.06,
+          912.97
+        ],
+        "exit_zone": [
+          974.03,
+          1103.6
+        ],
+        "stop": 776.54,
+        "analyst_target": 1103.6,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($844.06-$912.97) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($974.03-$1,103.60) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $776.54 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          924.1,
+          931.16
+        ],
+        "exit_zone": [
+          961.35,
+          961.85
+        ],
+        "stop": 916.34,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~0.8%/day) instead of a real pullback level.",
+          "Target zone ($961.35-$961.85) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $916.34 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $414B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 0.8%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 42.52 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": false,
+            "detail": "P/E 51.72 \u2014 stretched or undefined."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +8.2% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Profit margin 2.9%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 47.2,
+      "signal": "HOLD",
+      "confidence": 6.0,
+      "technical_score": 44.8,
+      "fundamental_score": 49.8,
+      "sentiment_score": 50.0,
+      "insider_score": 42,
+      "rationale": [
+        "RSI 42.52 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -1.72%.",
+        "Trading at 35.4% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 51.72 \u2014 very expensive by historical norms.",
+        "Revenue growth: +8.2% YoY.",
+        "Profit margin 2.9%.",
+        "Dividend yield 0.53%.",
+        "Analyst consensus: Buy, price target implies +18.2% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Potentially significant headline(s): First Look: Walmart, Meta, Target, and Fed News Move Markets; Daiwa Securities Group Inc. Acquires 6,139 Shares of Costco Wholesale Corporation $COST",
+        "5 different insiders sold a combined $3,550,359 recently with no offsetting purchases \u2014 worth a second look, though routine diversification or 10b5-1 plans are still the likeliest explanation."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "UNH",
+      "name": "UnitedHealth Group Inc.",
+      "price": 384.85,
+      "sector": "Healthcare",
+      "technical": {
+        "technical_score": 41.8,
+        "rsi": 32.66,
+        "macd_line": -8.921,
+        "macd_signal": -6.947,
+        "macd_hist": -1.974,
+        "sma20": 407.54,
+        "sma50": null,
+        "momentum_10d_pct": -4.73,
+        "range_position_pct": 62.7,
+        "volatility_pct": 1.17,
+        "recent_low_20d": 384.85,
+        "recent_high_20d": 428.79,
+        "notes": [
+          "RSI 32.66 \u2014 neutral momentum.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -4.73%.",
+          "Trading at 62.7% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 67.7,
+        "pe_ratio": 24.95,
+        "forward_pe": null,
+        "revenue_growth_pct": 11.81,
+        "profit_margin_pct": 2.69,
+        "dividend_yield_pct": 2.26,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 23.14,
+        "market_cap_usd": 349499373879,
+        "sector": "Healthcare",
+        "notes": [
+          "P/E 24.95 \u2014 reasonably valued.",
+          "Revenue growth: +11.8% YoY.",
+          "Profit margin 2.7%.",
+          "Dividend yield 2.26%.",
+          "Analyst consensus: Buy, price target implies +23.1% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 56.2,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 50,
+        "insider_buys": 0,
+        "insider_sells": 1,
+        "insider_buy_value": 0,
+        "insider_sell_value": 205000,
+        "notes": [
+          "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          243.17,
+          255.97
+        ],
+        "exit_zone": [
+          428.79,
+          473.9
+        ],
+        "stop": 223.72,
+        "analyst_target": 473.9,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($243.17-$255.97) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($428.79-$473.90) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $223.72 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          243.17,
+          255.97
+        ],
+        "exit_zone": [
+          428.79,
+          473.9
+        ],
+        "stop": 223.72,
+        "analyst_target": 473.9,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($243.17-$255.97) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($428.79-$473.90) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $223.72 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          379.45,
+          383.5
+        ],
+        "exit_zone": [
+          401.73,
+          408.74
+        ],
+        "stop": 375.01,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~1.2%/day) instead of a real pullback level.",
+          "Target zone ($401.73-$408.74) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $375.01 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $349B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 1.2%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 32.66 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 24.95 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +11.8% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Profit margin 2.7%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 55.0,
+      "signal": "HOLD",
+      "confidence": 10.0,
+      "technical_score": 41.8,
+      "fundamental_score": 67.7,
+      "sentiment_score": 56.2,
+      "insider_score": 50,
+      "rationale": [
+        "RSI 32.66 \u2014 neutral momentum.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -4.73%.",
+        "Trading at 62.7% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 24.95 \u2014 reasonably valued.",
+        "Revenue growth: +11.8% YoY.",
+        "Profit margin 2.7%.",
+        "Dividend yield 2.26%.",
+        "Analyst consensus: Buy, price target implies +23.1% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "XOM",
+      "name": "Exxon Mobil Corp.",
+      "price": 166.325,
+      "sector": "Energy",
+      "technical": {
+        "technical_score": 46.1,
+        "rsi": 73.37,
+        "macd_line": 5.436,
+        "macd_signal": 5.314,
+        "macd_hist": 0.123,
+        "sma20": 157.92,
+        "sma50": null,
+        "momentum_10d_pct": 7.3,
+        "range_position_pct": 85.0,
+        "volatility_pct": 1.13,
+        "recent_low_20d": 151.63,
+        "recent_high_20d": 166.15,
+        "notes": [
+          "RSI 73.37 \u2014 overbought, often precedes a pullback.",
+          "MACD bullish: line above signal and above zero.",
+          "Price is above its 20-day average.",
+          "10-day momentum: +7.30%.",
+          "Trading at 85.0% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 54.7,
+        "pe_ratio": 18.07,
+        "forward_pe": null,
+        "revenue_growth_pct": -4.52,
+        "profit_margin_pct": 8.91,
+        "dividend_yield_pct": 2.39,
+        "analyst_rating": "Hold",
+        "analyst_upside_pct": 2.91,
+        "market_cap_usd": 689327309500,
+        "sector": "Energy",
+        "notes": [
+          "P/E 18.07 \u2014 reasonably valued.",
+          "Revenue growth: -4.5% YoY.",
+          "Profit margin 8.9%.",
+          "Dividend yield 2.39%.",
+          "Analyst consensus: Hold, price target implies +2.9% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 75.0,
+        "big_news": true,
+        "flagged_headlines": [
+          "Exxon Stock Surges 2.3% as Oil Breaks Above $91"
+        ],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone positive.",
+          "Potentially significant headline(s): Exxon Stock Surges 2.3% as Oil Breaks Above $91"
+        ]
+      },
+      "insider": {
+        "insider_score": 50,
+        "insider_buys": 0,
+        "insider_sells": 5,
+        "insider_buy_value": 0,
+        "insider_sell_value": 1687836.31,
+        "notes": [
+          "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          107.96,
+          157.92
+        ],
+        "exit_zone": [
+          171.17,
+          176.41
+        ],
+        "stop": 99.32,
+        "analyst_target": 171.17,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($107.96-$157.92) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($171.17-$176.41) is anchored to the analyst consensus price target and its 52-week high.",
+          "Suggested protective stop: $99.32 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          107.96,
+          157.92
+        ],
+        "exit_zone": [
+          171.17,
+          176.41
+        ],
+        "stop": 99.32,
+        "analyst_target": 171.17,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($107.96-$157.92) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($171.17-$176.41) is anchored to the analyst consensus price target and its 52-week high.",
+          "Suggested protective stop: $99.32 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          153.04,
+          160.1
+        ],
+        "exit_zone": [
+          167.83,
+          170.08
+        ],
+        "stop": 151.31,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($153.04-$160.10) uses the last 5-10 sessions' pullback lows.",
+          "Price is already through its recent short-term highs, so the target zone is sized off volatility (~1.1%/day) instead.",
+          "Tight stop $151.31 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $689B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 1.1%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 73.37 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Prime setup"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 18.07 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up -4.5% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Profit margin 8.9%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": false,
+            "detail": "Consensus: Hold."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 1,
+        "total": 6,
+        "rating": "Not compelling right now"
+      },
+      "composite_score": 55.5,
+      "signal": "HOLD",
+      "confidence": 11.0,
+      "technical_score": 46.1,
+      "fundamental_score": 54.7,
+      "sentiment_score": 75.0,
+      "insider_score": 50,
+      "rationale": [
+        "RSI 73.37 \u2014 overbought, often precedes a pullback.",
+        "MACD bullish: line above signal and above zero.",
+        "Price is above its 20-day average.",
+        "10-day momentum: +7.30%.",
+        "Trading at 85.0% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 18.07 \u2014 reasonably valued.",
+        "Revenue growth: -4.5% YoY.",
+        "Profit margin 8.9%.",
+        "Dividend yield 2.39%.",
+        "Analyst consensus: Hold, price target implies +2.9% from here.",
+        "Scored 8 recent headlines; net tone positive.",
+        "Potentially significant headline(s): Exxon Stock Surges 2.3% as Oil Breaks Above $91",
+        "Recent insider activity is limited or routine (a sale or two, no clustering, no purchases) \u2014 not a real signal either way."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    },
+    {
+      "ticker": "BRK.B",
+      "name": "Berkshire Hathaway Inc.",
+      "price": 496.96,
+      "sector": "Financial Services",
+      "technical": {
+        "technical_score": 43.5,
+        "rsi": 42.24,
+        "macd_line": 0.893,
+        "macd_signal": 4.184,
+        "macd_hist": -3.291,
+        "sma20": 509.75,
+        "sma50": null,
+        "momentum_10d_pct": -5.29,
+        "range_position_pct": 44.6,
+        "volatility_pct": 0.91,
+        "recent_low_20d": 494.93,
+        "recent_high_20d": 529.42,
+        "notes": [
+          "RSI 42.24 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is below its 20-day average.",
+          "10-day momentum: -5.29%.",
+          "Trading at 44.6% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 58.5,
+        "pe_ratio": 16.19,
+        "forward_pe": null,
+        "revenue_growth_pct": 0.0,
+        "profit_margin_pct": 18.03,
+        "dividend_yield_pct": 0.0,
+        "analyst_rating": "Hold",
+        "analyst_upside_pct": -6.33,
+        "market_cap_usd": 1071869962571,
+        "sector": "Financial Services",
+        "notes": [
+          "P/E 16.19 \u2014 reasonably valued.",
+          "Revenue growth: +0.0% YoY.",
+          "Profit margin 18.0%.",
+          "Analyst consensus: Hold, price target implies -6.3% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 8,
+        "notes": [
+          "Scored 8 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "insider": {
+        "insider_score": 78,
+        "insider_buys": 5,
+        "insider_sells": 0,
+        "insider_buy_value": 250072.03,
+        "insider_sell_value": 0,
+        "notes": [
+          "2 insiders bought $250,072 on the open market recently \u2014 a real bullish signal, since insiders spend their own money to buy and rarely do it casually."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          464.01,
+          494.93
+        ],
+        "exit_zone": [
+          529.42,
+          537.74
+        ],
+        "stop": 426.89,
+        "analyst_target": 465.5,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($464.01-$494.93) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($529.42-$537.74) is anchored to its 52-week high.",
+          "Suggested protective stop: $426.89 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          464.01,
+          494.93
+        ],
+        "exit_zone": [
+          529.42,
+          537.74
+        ],
+        "stop": 426.89,
+        "analyst_target": 465.5,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($464.01-$494.93) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($529.42-$537.74) is anchored to its 52-week high.",
+          "Suggested protective stop: $426.89 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          492.34,
+          496.86
+        ],
+        "exit_zone": [
+          504.03,
+          529.42
+        ],
+        "stop": 487.86,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($492.34-$496.86) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($504.03-$529.42) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $487.86 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $1,072B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 0.9%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 42.24 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 16.19 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up +0.0% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 18.0%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": false,
+            "detail": "Consensus: Hold."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Not enough history for a 50-day trend read."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 55.2,
+      "signal": "HOLD",
+      "confidence": 10.0,
+      "technical_score": 43.5,
+      "fundamental_score": 58.5,
+      "sentiment_score": 50.0,
+      "insider_score": 78,
+      "rationale": [
+        "RSI 42.24 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is below its 20-day average.",
+        "10-day momentum: -5.29%.",
+        "Trading at 44.6% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 16.19 \u2014 reasonably valued.",
+        "Revenue growth: +0.0% YoY.",
+        "Profit margin 18.0%.",
+        "Analyst consensus: Hold, price target implies -6.3% from here.",
+        "Scored 8 recent headlines; net tone mixed/neutral.",
+        "2 insiders bought $250,072 on the open market recently \u2014 a real bullish signal, since insiders spend their own money to buy and rarely do it casually."
+      ],
+      "data_source": "FMP",
+      "noteworthy": false,
+      "noteworthy_reasons": []
+    }
+  ],
+  "screener_picks": [],
+  "discovered_candidates": [
+    {
+      "ticker": "MRNA",
+      "name": "Moderna, Inc.",
+      "price": 133.32,
+      "technical": {
+        "technical_score": 60.2,
+        "rsi": 69.6,
+        "macd_line": 13.222,
+        "macd_signal": 3.958,
+        "macd_hist": 9.263,
+        "sma20": 68.01,
+        "sma50": 65.62,
+        "momentum_10d_pct": 147.51,
+        "range_position_pct": 71.9,
+        "volatility_pct": 12.72,
+        "recent_low_20d": 53.86,
+        "recent_high_20d": 174.38,
+        "notes": [
+          "RSI 69.6 \u2014 neutral momentum.",
+          "MACD bullish: line above signal and above zero.",
+          "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+          "10-day momentum: +147.51%.",
+          "Trading at 71.9% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 17.5,
+        "pe_ratio": null,
+        "forward_pe": null,
+        "revenue_growth_pct": -27.6,
+        "profit_margin_pct": null,
+        "dividend_yield_pct": null,
+        "analyst_rating": "Hold",
+        "analyst_upside_pct": -33.0,
+        "market_cap_usd": 53230000000.0,
+        "notes": [
+          "Revenue growth: -27.6% YoY.",
+          "Analyst consensus: Hold, price target implies -33.0% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": true,
+        "flagged_headlines": [
+          "Moderna stock plunges 25%, wiping out $1.8 billion after historic cancer vaccine breakthrough"
+        ],
+        "headline_count": 2,
+        "notes": [
+          "Scored 2 recent headlines; net tone mixed/neutral.",
+          "Potentially significant headline(s): Moderna stock plunges 25%, wiping out $1.8 billion after historic cancer vaccine breakthrough"
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          22.28,
+          68.01
+        ],
+        "exit_zone": [
+          174.38,
+          176.66
+        ],
+        "stop": 20.5,
+        "analyst_target": 89.32,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($22.28-$68.01) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($174.38-$176.66) is anchored to its 52-week high.",
+          "Suggested protective stop: $20.50 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          22.28,
+          68.01
+        ],
+        "exit_zone": [
+          174.38,
+          176.66
+        ],
+        "stop": 20.5,
+        "analyst_target": 89.32,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($22.28-$68.01) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($174.38-$176.66) is anchored to its 52-week high.",
+          "Suggested protective stop: $20.50 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          59.17,
+          62.96
+        ],
+        "exit_zone": [
+          174.38,
+          196.56
+        ],
+        "stop": 51.64,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($59.17-$62.96) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($174.38-$196.56) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $51.64 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $53B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 12.7%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 69.6 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Prime setup"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": false,
+            "detail": "P/E unavailable."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up -27.6% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Margin unavailable."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": false,
+            "detail": "Consensus: Hold."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": true,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 1,
+        "total": 6,
+        "rating": "Not compelling right now"
+      },
+      "composite_score": 40.6,
+      "signal": "HOLD",
+      "confidence": 19.0,
+      "technical_score": 60.2,
+      "fundamental_score": 17.5,
+      "sentiment_score": 50.0,
+      "rationale": [
+        "RSI 69.6 \u2014 neutral momentum.",
+        "MACD bullish: line above signal and above zero.",
+        "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+        "10-day momentum: +147.51%.",
+        "Trading at 71.9% of its 52-week range (0%=52w low, 100%=52w high).",
+        "Revenue growth: -27.6% YoY.",
+        "Analyst consensus: Hold, price target implies -33.0% from here.",
+        "Scored 2 recent headlines; net tone mixed/neutral.",
+        "Potentially significant headline(s): Moderna stock plunges 25%, wiping out $1.8 billion after historic cancer vaccine breakthrough"
+      ],
+      "source": "screened",
+      "source_label": "Today's mover"
+    },
+    {
+      "ticker": "WMT",
+      "name": "Walmart Inc.",
+      "price": 103.84,
+      "technical": {
+        "technical_score": 47.1,
+        "rsi": 29.33,
+        "macd_line": -0.528,
+        "macd_signal": -0.242,
+        "macd_hist": -0.286,
+        "sma20": 112.5,
+        "sma50": 113.93,
+        "momentum_10d_pct": -7.34,
+        "range_position_pct": 21.2,
+        "volatility_pct": 1.31,
+        "recent_low_20d": 103.84,
+        "recent_high_20d": 116.01,
+        "notes": [
+          "RSI 29.33 \u2014 oversold, often a bullish reversal signal.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+          "10-day momentum: -7.34%.",
+          "Trading at 21.2% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 59.6,
+        "pe_ratio": 41.42,
+        "forward_pe": 37.23,
+        "revenue_growth_pct": 6.2,
+        "profit_margin_pct": null,
+        "dividend_yield_pct": 0.95,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 31.25,
+        "market_cap_usd": 826370000000.0,
+        "notes": [
+          "P/E 41.42 \u2014 expensive, priced for a lot to go right.",
+          "Forward P/E (37.23) is lower than trailing \u2014 earnings expected to grow into the price.",
+          "Revenue growth: +6.2% YoY.",
+          "Dividend yield 0.95%.",
+          "Analyst consensus: Buy, price target implies +31.2% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 2,
+        "notes": [
+          "Scored 2 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          90.65,
+          95.42
+        ],
+        "exit_zone": [
+          116.01,
+          136.29
+        ],
+        "stop": 83.4,
+        "analyst_target": 136.29,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($90.65-$95.42) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($116.01-$136.29) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $83.40 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          90.65,
+          95.42
+        ],
+        "exit_zone": [
+          116.01,
+          136.29
+        ],
+        "stop": 83.4,
+        "analyst_target": 136.29,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($90.65-$95.42) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($116.01-$136.29) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $83.40 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          102.21,
+          103.43
+        ],
+        "exit_zone": [
+          115.27,
+          116.01
+        ],
+        "stop": 100.87,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "No recent swing low sits below price, so the entry zone is sized off the stock's own volatility (~1.3%/day) instead of a real pullback level.",
+          "Target zone ($115.27-$116.01) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $100.87 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $826B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 1.3%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 29.33 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": false,
+            "detail": "P/E 41.42 \u2014 stretched or undefined."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +6.2% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Margin unavailable."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 2,
+        "total": 6,
+        "rating": "Not compelling right now"
+      },
+      "composite_score": 52.8,
+      "signal": "HOLD",
+      "confidence": 6.0,
+      "technical_score": 47.1,
+      "fundamental_score": 59.6,
+      "sentiment_score": 50.0,
+      "rationale": [
+        "RSI 29.33 \u2014 oversold, often a bullish reversal signal.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+        "10-day momentum: -7.34%.",
+        "Trading at 21.2% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 41.42 \u2014 expensive, priced for a lot to go right.",
+        "Forward P/E (37.23) is lower than trailing \u2014 earnings expected to grow into the price.",
+        "Revenue growth: +6.2% YoY.",
+        "Dividend yield 0.95%.",
+        "Analyst consensus: Buy, price target implies +31.2% from here.",
+        "Scored 2 recent headlines; net tone mixed/neutral."
+      ],
+      "source": "screened",
+      "source_label": "Today's mover"
+    },
+    {
+      "ticker": "MARA",
+      "name": "MARA Holdings, Inc.",
+      "price": 11.15,
+      "technical": {
+        "technical_score": 52.0,
+        "rsi": 52.83,
+        "macd_line": -0.726,
+        "macd_signal": -0.834,
+        "macd_hist": 0.107,
+        "sma20": 10.54,
+        "sma50": 12.09,
+        "momentum_10d_pct": 4.6,
+        "range_position_pct": 26.7,
+        "volatility_pct": 5.58,
+        "recent_low_20d": 8.96,
+        "recent_high_20d": 12.12,
+        "notes": [
+          "RSI 52.83 \u2014 neutral momentum.",
+          "MACD turning up: histogram positive.",
+          "Price is above its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+          "10-day momentum: +4.60%.",
+          "Trading at 26.7% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 66.1,
+        "pe_ratio": null,
+        "forward_pe": null,
+        "revenue_growth_pct": 0.7,
+        "profit_margin_pct": null,
+        "dividend_yield_pct": null,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 61.35,
+        "market_cap_usd": 4310000000.0,
+        "notes": [
+          "Revenue growth: +0.7% YoY.",
+          "Analyst consensus: Buy, price target implies +61.4% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 75.0,
+        "big_news": true,
+        "flagged_headlines": [
+          "MARA Holdings surges on crypto rally"
+        ],
+        "headline_count": 2,
+        "notes": [
+          "Scored 2 recent headlines; net tone positive.",
+          "Potentially significant headline(s): MARA Holdings surges on crypto rally"
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          6.66,
+          10.54
+        ],
+        "exit_zone": [
+          12.12,
+          23.45
+        ],
+        "stop": 6.13,
+        "analyst_target": 17.99,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($6.66-$10.54) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($12.12-$23.45) is anchored to its 52-week high.",
+          "Suggested protective stop: $6.13 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          6.66,
+          10.54
+        ],
+        "exit_zone": [
+          12.12,
+          23.45
+        ],
+        "stop": 6.13,
+        "analyst_target": 17.99,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($6.66-$10.54) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($12.12-$23.45) is anchored to its 52-week high.",
+          "Suggested protective stop: $6.13 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          8.46,
+          8.96
+        ],
+        "exit_zone": [
+          11.65,
+          12.39
+        ],
+        "stop": 7.99,
+        "in_entry_zone": false,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($8.46-$8.96) uses the last 5-10 sessions' pullback lows.",
+          "Price is already through its recent short-term highs, so the target zone is sized off volatility (~5.6%/day) instead.",
+          "Tight stop $7.99 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": false,
+            "detail": "Market cap $4B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 5.6%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 52.83 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": false,
+            "detail": "P/E unavailable."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": false,
+            "detail": "Revenue up +0.7% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Margin unavailable."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 1,
+        "total": 6,
+        "rating": "Not compelling right now"
+      },
+      "composite_score": 63.4,
+      "signal": "BUY",
+      "confidence": 27.0,
+      "technical_score": 52.0,
+      "fundamental_score": 66.1,
+      "sentiment_score": 75.0,
+      "rationale": [
+        "RSI 52.83 \u2014 neutral momentum.",
+        "MACD turning up: histogram positive.",
+        "Price is above its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+        "10-day momentum: +4.60%.",
+        "Trading at 26.7% of its 52-week range (0%=52w low, 100%=52w high).",
+        "Revenue growth: +0.7% YoY.",
+        "Analyst consensus: Buy, price target implies +61.4% from here.",
+        "Scored 2 recent headlines; net tone positive.",
+        "Potentially significant headline(s): MARA Holdings surges on crypto rally"
+      ],
+      "source": "screened",
+      "source_label": "Today's mover"
+    },
+    {
+      "ticker": "COIN",
+      "name": "Coinbase Global, Inc.",
+      "price": 172.35,
+      "technical": {
+        "technical_score": 53.0,
+        "rsi": 61.37,
+        "macd_line": -0.292,
+        "macd_signal": -2.035,
+        "macd_hist": 1.743,
+        "sma20": 154.39,
+        "sma50": 157.86,
+        "momentum_10d_pct": 18.57,
+        "range_position_pct": 12.7,
+        "volatility_pct": 3.47,
+        "recent_low_20d": 145.41,
+        "recent_high_20d": 172.41,
+        "notes": [
+          "RSI 61.37 \u2014 neutral momentum.",
+          "MACD turning up: histogram positive.",
+          "Price is above its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+          "10-day momentum: +18.57%.",
+          "Trading at 12.7% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 77.2,
+        "pe_ratio": null,
+        "forward_pe": 152.23,
+        "revenue_growth_pct": 9.38,
+        "profit_margin_pct": null,
+        "dividend_yield_pct": null,
+        "analyst_rating": "Buy",
+        "analyst_upside_pct": 13.44,
+        "market_cap_usd": 45470000000.0,
+        "notes": [
+          "Revenue growth: +9.4% YoY.",
+          "Analyst consensus: Buy, price target implies +13.4% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 2,
+        "notes": [
+          "Scored 2 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          139.11,
+          157.86
+        ],
+        "exit_zone": [
+          172.41,
+          402.16
+        ],
+        "stop": 127.98,
+        "analyst_target": 195.51,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($139.11-$157.86) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($172.41-$402.16) is anchored to its 52-week high.",
+          "Suggested protective stop: $127.98 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          139.11,
+          157.86
+        ],
+        "exit_zone": [
+          172.41,
+          402.16
+        ],
+        "stop": 127.98,
+        "analyst_target": 195.51,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($139.11-$157.86) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($172.41-$402.16) is anchored to its 52-week high.",
+          "Suggested protective stop: $127.98 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          141.16,
+          146.23
+        ],
+        "exit_zone": [
+          172.41,
+          178.39
+        ],
+        "stop": 136.26,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($141.16-$146.23) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($172.41-$178.39) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $136.26 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $45B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 3.5%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 61.37 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Prime setup"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": false,
+            "detail": "P/E unavailable."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +9.4% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Margin unavailable."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": true,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 61.9,
+      "signal": "HOLD",
+      "confidence": 24.0,
+      "technical_score": 53.0,
+      "fundamental_score": 77.2,
+      "sentiment_score": 50.0,
+      "rationale": [
+        "RSI 61.37 \u2014 neutral momentum.",
+        "MACD turning up: histogram positive.",
+        "Price is above its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+        "10-day momentum: +18.57%.",
+        "Trading at 12.7% of its 52-week range (0%=52w low, 100%=52w high).",
+        "Revenue growth: +9.4% YoY.",
+        "Analyst consensus: Buy, price target implies +13.4% from here.",
+        "Scored 2 recent headlines; net tone mixed/neutral."
+      ],
+      "source": "screened",
+      "source_label": "Today's mover"
+    },
+    {
+      "ticker": "META",
+      "name": "Meta Platforms, Inc.",
+      "price": 545.83,
+      "technical": {
+        "technical_score": 38.3,
+        "rsi": 37.3,
+        "macd_line": -10.415,
+        "macd_signal": -4.366,
+        "macd_hist": -6.05,
+        "sma20": 578.75,
+        "sma50": 593.41,
+        "momentum_10d_pct": -7.46,
+        "range_position_pct": 9.5,
+        "volatility_pct": 1.92,
+        "recent_low_20d": 539.03,
+        "recent_high_20d": 599.12,
+        "notes": [
+          "RSI 37.3 \u2014 neutral momentum.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+          "10-day momentum: -7.46%.",
+          "Trading at 9.5% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 84.8,
+        "pe_ratio": 20.57,
+        "forward_pe": 17.05,
+        "revenue_growth_pct": 22.17,
+        "profit_margin_pct": 29.98,
+        "dividend_yield_pct": 0.38,
+        "analyst_rating": "Strong Buy",
+        "analyst_upside_pct": 38.16,
+        "market_cap_usd": 1390000000000.0,
+        "notes": [
+          "P/E 20.57 \u2014 reasonably valued.",
+          "Forward P/E (17.05) is lower than trailing \u2014 earnings expected to grow into the price.",
+          "Revenue growth: +22.2% YoY.",
+          "Profit margin 30.0%.",
+          "Dividend yield 0.38%.",
+          "Analyst consensus: Strong Buy, price target implies +38.2% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 1,
+        "notes": [
+          "Scored 1 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          520.26,
+          539.03
+        ],
+        "exit_zone": [
+          599.12,
+          790.8
+        ],
+        "stop": 478.64,
+        "analyst_target": 754.12,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($520.26-$539.03) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($599.12-$790.80) is anchored to its 52-week high.",
+          "Suggested protective stop: $478.64 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          520.26,
+          539.03
+        ],
+        "exit_zone": [
+          599.12,
+          790.8
+        ],
+        "stop": 478.64,
+        "analyst_target": 754.12,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($520.26-$539.03) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($599.12-$790.80) is anchored to its 52-week high.",
+          "Suggested protective stop: $478.64 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          533.23,
+          543.67
+        ],
+        "exit_zone": [
+          589.85,
+          599.12
+        ],
+        "stop": 522.99,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($533.23-$543.67) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($589.85-$599.12) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $522.99 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $1,390B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 1.9%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 37.3 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 20.57 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +22.2% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": true,
+            "detail": "Profit margin 30.0%."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Strong Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 59.8,
+      "signal": "HOLD",
+      "confidence": 20.0,
+      "technical_score": 38.3,
+      "fundamental_score": 84.8,
+      "sentiment_score": 50.0,
+      "rationale": [
+        "RSI 37.3 \u2014 neutral momentum.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average, and the 20-day is below the 50-day (bearish trend alignment).",
+        "10-day momentum: -7.46%.",
+        "Trading at 9.5% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 20.57 \u2014 reasonably valued.",
+        "Forward P/E (17.05) is lower than trailing \u2014 earnings expected to grow into the price.",
+        "Revenue growth: +22.2% YoY.",
+        "Profit margin 30.0%.",
+        "Dividend yield 0.38%.",
+        "Analyst consensus: Strong Buy, price target implies +38.2% from here.",
+        "Scored 1 recent headlines; net tone mixed/neutral."
+      ],
+      "source": "screened",
+      "source_label": "Growth screen"
+    },
+    {
+      "ticker": "AVGO",
+      "name": "Broadcom Inc.",
+      "price": 364.03,
+      "technical": {
+        "technical_score": 44.2,
+        "rsi": 36.86,
+        "macd_line": -2.347,
+        "macd_signal": 3.763,
+        "macd_hist": -6.109,
+        "sma20": 396.74,
+        "sma50": 388.58,
+        "momentum_10d_pct": -13.44,
+        "range_position_pct": 38.5,
+        "volatility_pct": 1.93,
+        "recent_low_20d": 362.48,
+        "recent_high_20d": 427.76,
+        "notes": [
+          "RSI 36.86 \u2014 neutral momentum.",
+          "MACD bearish: line below signal and below zero.",
+          "Price is below its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+          "10-day momentum: -13.44%.",
+          "Trading at 38.5% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 63.4,
+        "pe_ratio": 60.33,
+        "forward_pe": 23.0,
+        "revenue_growth_pct": 32.3,
+        "profit_margin_pct": null,
+        "dividend_yield_pct": 0.71,
+        "analyst_rating": "Strong Buy",
+        "analyst_upside_pct": 45.01,
+        "market_cap_usd": 1730000000000.0,
+        "notes": [
+          "P/E 60.33 \u2014 very expensive by historical norms.",
+          "Forward P/E (23.0) is lower than trailing \u2014 earnings expected to grow into the price.",
+          "Revenue growth: +32.3% YoY.",
+          "Dividend yield 0.71%.",
+          "Analyst consensus: Strong Buy, price target implies +45.0% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 100.0,
+        "big_news": true,
+        "flagged_headlines": [
+          "Broadcom Inc. (AVGO) Stock Surges Over 8%"
+        ],
+        "headline_count": 1,
+        "notes": [
+          "Scored 1 recent headlines; net tone positive.",
+          "Potentially significant headline(s): Broadcom Inc. (AVGO) Stock Surges Over 8%"
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          281.87,
+          362.48
+        ],
+        "exit_zone": [
+          427.76,
+          527.88
+        ],
+        "stop": 259.32,
+        "analyst_target": 527.88,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($281.87-$362.48) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($427.76-$527.88) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $259.32 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          281.87,
+          362.48
+        ],
+        "exit_zone": [
+          427.76,
+          527.88
+        ],
+        "stop": 259.32,
+        "analyst_target": 527.88,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($281.87-$362.48) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($427.76-$527.88) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $259.32 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          355.48,
+          362.48
+        ],
+        "exit_zone": [
+          392.99,
+          427.76
+        ],
+        "stop": 348.62,
+        "in_entry_zone": true,
+        "at_exit_target": false,
+        "notes": [
+          "Entry zone ($355.48-$362.48) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($392.99-$427.76) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $348.62 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $1,730B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 1.9%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": false,
+            "detail": "RSI 36.86 \u2014 stuck in the 35-60 no-mans-land."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": true,
+            "detail": "Price vs. 20-day average and MACD histogram agree on direction."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": true,
+            "detail": "There's a real headline behind the move, not just drift."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Prime setup"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": false,
+            "detail": "P/E 60.33 \u2014 stretched or undefined."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +32.3% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Margin unavailable."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Strong Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": false,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 65.8,
+      "signal": "BUY",
+      "confidence": 32.0,
+      "technical_score": 44.2,
+      "fundamental_score": 63.4,
+      "sentiment_score": 100.0,
+      "rationale": [
+        "RSI 36.86 \u2014 neutral momentum.",
+        "MACD bearish: line below signal and below zero.",
+        "Price is below its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+        "10-day momentum: -13.44%.",
+        "Trading at 38.5% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 60.33 \u2014 very expensive by historical norms.",
+        "Forward P/E (23.0) is lower than trailing \u2014 earnings expected to grow into the price.",
+        "Revenue growth: +32.3% YoY.",
+        "Dividend yield 0.71%.",
+        "Analyst consensus: Strong Buy, price target implies +45.0% from here.",
+        "Scored 1 recent headlines; net tone positive.",
+        "Potentially significant headline(s): Broadcom Inc. (AVGO) Stock Surges Over 8%"
+      ],
+      "source": "screened",
+      "source_label": "Growth screen"
+    },
+    {
+      "ticker": "ADBE",
+      "name": "Adobe Inc.",
+      "price": 272.22,
+      "technical": {
+        "technical_score": 53.0,
+        "rsi": 60.81,
+        "macd_line": 11.209,
+        "macd_signal": 11.778,
+        "macd_hist": -0.568,
+        "sma20": 257.97,
+        "sma50": 231.91,
+        "momentum_10d_pct": 4.7,
+        "range_position_pct": 45.6,
+        "volatility_pct": 3.05,
+        "recent_low_20d": 225.11,
+        "recent_high_20d": 272.96,
+        "notes": [
+          "RSI 60.81 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+          "10-day momentum: +4.70%.",
+          "Trading at 45.6% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 70.9,
+        "pe_ratio": 15.58,
+        "forward_pe": 10.51,
+        "revenue_growth_pct": 11.5,
+        "profit_margin_pct": null,
+        "dividend_yield_pct": null,
+        "analyst_rating": "Hold",
+        "analyst_upside_pct": -0.59,
+        "market_cap_usd": 108210000000.0,
+        "notes": [
+          "P/E 15.58 \u2014 reasonably valued.",
+          "Forward P/E (10.51) is lower than trailing \u2014 earnings expected to grow into the price.",
+          "Revenue growth: +11.5% YoY.",
+          "Analyst consensus: Hold, price target implies -0.6% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 75.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 2,
+        "notes": [
+          "Scored 2 recent headlines; net tone positive."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          190.12,
+          257.97
+        ],
+        "exit_zone": [
+          272.96,
+          370.86
+        ],
+        "stop": 174.91,
+        "analyst_target": 270.61,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($190.12-$257.97) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($272.96-$370.86) is anchored to its 52-week high.",
+          "Suggested protective stop: $174.91 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          190.12,
+          257.97
+        ],
+        "exit_zone": [
+          272.96,
+          370.86
+        ],
+        "stop": 174.91,
+        "analyst_target": 270.61,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($190.12-$257.97) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($272.96-$370.86) is anchored to its 52-week high.",
+          "Suggested protective stop: $174.91 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          246.29,
+          254.04
+        ],
+        "exit_zone": [
+          272.48,
+          272.96
+        ],
+        "stop": 238.78,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($246.29-$254.04) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($272.48-$272.96) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $238.78 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $108B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": true,
+            "detail": "Averaging 3.0%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 60.81 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": false,
+            "detail": "Short-term trend and momentum are pulling different ways (or data's missing)."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": true,
+            "detail": "Trading within ~8% of its 20-day high or low \u2014 near a level that tends to trigger a move."
+          }
+        ],
+        "passed": 4,
+        "total": 6,
+        "rating": "Worth watching"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 15.58 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +11.5% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Margin unavailable."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": false,
+            "detail": "Consensus: Hold."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": true,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": false,
+            "detail": "Price is running well above its computed buy zone \u2014 you'd be paying up here."
+          }
+        ],
+        "passed": 3,
+        "total": 6,
+        "rating": "Reasonable, some caveats"
+      },
+      "composite_score": 65.7,
+      "signal": "BUY",
+      "confidence": 31.0,
+      "technical_score": 53.0,
+      "fundamental_score": 70.9,
+      "sentiment_score": 75.0,
+      "rationale": [
+        "RSI 60.81 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+        "10-day momentum: +4.70%.",
+        "Trading at 45.6% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 15.58 \u2014 reasonably valued.",
+        "Forward P/E (10.51) is lower than trailing \u2014 earnings expected to grow into the price.",
+        "Revenue growth: +11.5% YoY.",
+        "Analyst consensus: Hold, price target implies -0.6% from here.",
+        "Scored 2 recent headlines; net tone positive."
+      ],
+      "source": "screened",
+      "source_label": "Growth screen"
+    },
+    {
+      "ticker": "MA",
+      "name": "Mastercard Incorporated",
+      "price": 573.85,
+      "technical": {
+        "technical_score": 50.2,
+        "rsi": 62.66,
+        "macd_line": 10.511,
+        "macd_signal": 12.164,
+        "macd_hist": -1.653,
+        "sma20": 566.21,
+        "sma50": 535.85,
+        "momentum_10d_pct": -0.36,
+        "range_position_pct": 79.7,
+        "volatility_pct": 0.95,
+        "recent_low_20d": 539.66,
+        "recent_high_20d": 577.35,
+        "notes": [
+          "RSI 62.66 \u2014 neutral momentum.",
+          "MACD turning down: histogram negative.",
+          "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+          "10-day momentum: -0.36%.",
+          "Trading at 79.7% of its 52-week range (0%=52w low, 100%=52w high)."
+        ]
+      },
+      "fundamental": {
+        "fundamental_score": 76.5,
+        "pe_ratio": 31.55,
+        "forward_pe": 26.98,
+        "revenue_growth_pct": 16.0,
+        "profit_margin_pct": null,
+        "dividend_yield_pct": 0.61,
+        "analyst_rating": "Strong Buy",
+        "analyst_upside_pct": 16.29,
+        "market_cap_usd": 502700000000.0,
+        "notes": [
+          "P/E 31.55 \u2014 priced for continued growth.",
+          "Forward P/E (26.98) is lower than trailing \u2014 earnings expected to grow into the price.",
+          "Revenue growth: +16.0% YoY.",
+          "Dividend yield 0.61%.",
+          "Analyst consensus: Strong Buy, price target implies +16.3% from here."
+        ]
+      },
+      "sentiment": {
+        "sentiment_score": 50.0,
+        "big_news": false,
+        "flagged_headlines": [],
+        "headline_count": 1,
+        "notes": [
+          "Scored 1 recent headlines; net tone mixed/neutral."
+        ]
+      },
+      "price_levels": {
+        "entry_zone": [
+          464.52,
+          566.21
+        ],
+        "exit_zone": [
+          577.35,
+          667.33
+        ],
+        "stop": 427.36,
+        "analyst_target": 667.33,
+        "in_entry_zone": true,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($464.52-$566.21) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($577.35-$667.33) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $427.36 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "investing_levels": {
+        "entry_zone": [
+          464.52,
+          566.21
+        ],
+        "exit_zone": [
+          577.35,
+          667.33
+        ],
+        "stop": 427.36,
+        "analyst_target": 667.33,
+        "in_entry_zone": true,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($464.52-$566.21) is built from nearby technical support: recent swing lows and moving averages currently sitting below price.",
+          "Exit/take-profit zone ($577.35-$667.33) is anchored to the analyst consensus price target.",
+          "Suggested protective stop: $427.36 (~8% below the entry zone) -- a common risk-management guideline for a long-term position, not a prediction it will get there."
+        ]
+      },
+      "day_trade_levels": {
+        "entry_zone": [
+          559.73,
+          562.26
+        ],
+        "exit_zone": [
+          574.31,
+          579.77
+        ],
+        "stop": 554.41,
+        "in_entry_zone": false,
+        "at_exit_target": true,
+        "notes": [
+          "Entry zone ($559.73-$562.26) uses the last 5-10 sessions' pullback lows.",
+          "Target zone ($574.31-$579.77) uses the last 5-10 sessions' swing highs.",
+          "Tight stop $554.41 (~one typical day's move below entry) -- a day trade needs a fast exit if it's wrong, not an 8% cushion."
+        ]
+      },
+      "day_trade_checklist": {
+        "items": [
+          {
+            "label": "Liquid",
+            "passed": true,
+            "detail": "Market cap $503B \u2014 large-cap, easy to get in and out."
+          },
+          {
+            "label": "Volatile enough",
+            "passed": false,
+            "detail": "Averaging 0.9%/day over the last 20 sessions."
+          },
+          {
+            "label": "Momentum, not dead zone",
+            "passed": true,
+            "detail": "RSI 62.66 \u2014 clear directional push."
+          },
+          {
+            "label": "Trend confirmed",
+            "passed": false,
+            "detail": "Short-term trend and momentum are pulling different ways (or data's missing)."
+          },
+          {
+            "label": "News catalyst today",
+            "passed": false,
+            "detail": "No standout headline in the recent news pull."
+          },
+          {
+            "label": "At an inflection point",
+            "passed": false,
+            "detail": "Sitting mid-range, away from its recent high or low."
+          }
+        ],
+        "passed": 2,
+        "total": 6,
+        "rating": "Not today"
+      },
+      "investing_checklist": {
+        "items": [
+          {
+            "label": "Reasonable valuation",
+            "passed": true,
+            "detail": "P/E 31.55 \u2014 within a normal range for a quality large-cap."
+          },
+          {
+            "label": "Growing revenue",
+            "passed": true,
+            "detail": "Revenue up +16.0% YoY."
+          },
+          {
+            "label": "Genuinely profitable",
+            "passed": false,
+            "detail": "Margin unavailable."
+          },
+          {
+            "label": "Analysts on board",
+            "passed": true,
+            "detail": "Consensus: Strong Buy."
+          },
+          {
+            "label": "Long-term uptrend",
+            "passed": true,
+            "detail": "Price is above its 50-day average."
+          },
+          {
+            "label": "Not chasing the price",
+            "passed": true,
+            "detail": "Price is at or near its buy zone rather than stretched above it."
+          }
+        ],
+        "passed": 5,
+        "total": 6,
+        "rating": "Strong candidate"
+      },
+      "composite_score": 60.7,
+      "signal": "HOLD",
+      "confidence": 21.0,
+      "technical_score": 50.2,
+      "fundamental_score": 76.5,
+      "sentiment_score": 50.0,
+      "rationale": [
+        "RSI 62.66 \u2014 neutral momentum.",
+        "MACD turning down: histogram negative.",
+        "Price is above its 20-day average, and the 20-day is above the 50-day (bullish trend alignment).",
+        "10-day momentum: -0.36%.",
+        "Trading at 79.7% of its 52-week range (0%=52w low, 100%=52w high).",
+        "P/E 31.55 \u2014 priced for continued growth.",
+        "Forward P/E (26.98) is lower than trailing \u2014 earnings expected to grow into the price.",
+        "Revenue growth: +16.0% YoY.",
+        "Dividend yield 0.61%.",
+        "Analyst consensus: Strong Buy, price target implies +16.3% from here.",
+        "Scored 1 recent headlines; net tone mixed/neutral."
+      ],
+      "source": "screened",
+      "source_label": "Growth screen"
+    }
+  ],
+  "pending_tickers": [],
+  "market_note": "Full 15-ticker watchlist now running on live FMP data (quote, ratios, growth, analyst target/rating, price history, news, sector profile, insider filings) -- verification run completed successfully end to end.",
+  "generated_at": "2026-08-21T02:43:25.211094+00:00"
+}
