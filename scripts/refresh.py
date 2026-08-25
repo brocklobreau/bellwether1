@@ -28,6 +28,51 @@ from lib.pipeline import score_ticker
 from lib.composite import detect_noteworthy
 from lib.save_results import save_run, load_previous
 from lib.dashboard import generate_html
+from lib.sentiment import score_headline
+
+NEWS_FEED_MAX = 15  # rolling per-ticker headline history kept across cycles
+
+
+def tag_headlines(news_items):
+    """Score each raw FMP news item individually (lib.sentiment.score_headline
+    is the same per-headline scorer score_sentiment already uses internally)
+    and keep the metadata the aggregate sentiment score normally throws away
+    -- date/site/url -- so the dashboard can show an actual per-ticker news
+    feed instead of just a single rolled-up score (added 2026-08-25,
+    user-requested)."""
+    tagged = []
+    for n in news_items or []:
+        title = n.get("title")
+        if not title:
+            continue
+        s, mag = score_headline(title)
+        tone = "positive" if s > 0.15 else "negative" if s < -0.15 else "neutral"
+        tagged.append({
+            "title": title,
+            "date": n.get("publishedDate"),
+            "site": n.get("site"),
+            "url": n.get("url"),
+            "tone": tone,
+            "magnitude": bool(mag),
+        })
+    return tagged
+
+
+def merge_headline_feed(previous_feed, fresh_tagged, max_items=NEWS_FEED_MAX):
+    """Union this cycle's tagged headlines with whatever was already on file,
+    deduped by title, newest first. This is what makes the news section
+    'keep showing' a real catalyst for a few days instead of it vanishing
+    the moment a later cycle's raw FMP fetch happens to come back thin."""
+    seen = set()
+    merged = []
+    for h in list(fresh_tagged or []) + list(previous_feed or []):
+        title = h.get("title")
+        if not title or title in seen:
+            continue
+        seen.add(title)
+        merged.append(h)
+    merged.sort(key=lambda h: h.get("date") or "", reverse=True)
+    return merged[:max_items]
 
 WATCHLIST_PATH = os.path.join(BASE, "watchlist.json")
 HEARTBEAT_PATH = os.path.join(BASE, "results", "heartbeat.json")
@@ -118,12 +163,17 @@ def build_fund_input(symbol, q, r, growth, target, grades, prof):
     }
 
 
-def fetch_and_score(symbol, name_hint=None, full=True, source=None, source_label=None):
+def fetch_and_score(symbol, name_hint=None, full=True, source=None, source_label=None, prev_headline_feed=None):
     """full=True pulls ratios/growth/target/grades/profile/earnings/insider
     in addition to quote+history+news; full=False (used for day-trade-only
     discovery candidates) skips the fundamentals-only calls per RUNBOOK.md
     step 3b ("skip ratios/growth/target/rating/sector/insider, they don't
-    feed day-trade scoring") to keep the scan fast."""
+    feed day-trade scoring") to keep the scan fast.
+
+    prev_headline_feed: the ticker's headline_feed from the previous cycle
+    (watchlist tickers only -- see run()), so a real catalyst stays visible
+    on the dashboard for a few days rather than disappearing the moment a
+    later cycle's raw news fetch happens to come back thin."""
     q = fmp.quote(symbol)
     if not q or q.get("price") is None:
         raise fmp.FMPError(f"No usable quote for {symbol}")
@@ -139,8 +189,9 @@ def fetch_and_score(symbol, name_hint=None, full=True, source=None, source_label
     if len(hist) > 21:
         avg_volume = sum(row.get("volume") or 0 for row in hist[1:21]) / 20
 
-    news = fmp.news_stock(symbol, limit=8)
+    news = fmp.news_stock(symbol, limit=12)
     headlines = [n.get("title") for n in news if n.get("title")]
+    headline_feed = merge_headline_feed(prev_headline_feed, tag_headlines(news))
 
     r = growth = target = grades = prof = {}
     earnings_rows = []
@@ -183,6 +234,7 @@ def fetch_and_score(symbol, name_hint=None, full=True, source=None, source_label
         result["source"] = source
     if source_label:
         result["source_label"] = source_label
+    result.setdefault("sentiment", {})["headline_feed"] = headline_feed
     return result
 
 
@@ -226,7 +278,8 @@ def run():
         for symbol in watchlist:
             log(f"watchlist: {symbol}")
             try:
-                res = fetch_and_score(symbol, full=True)
+                prev_feed = (prev_watchlist_by_ticker.get(symbol) or {}).get("sentiment", {}).get("headline_feed")
+                res = fetch_and_score(symbol, full=True, prev_headline_feed=prev_feed)
             except fmp.FMPError as e:
                 log(f"  FAILED {symbol}: {e}")
                 # Carry the previous result forward rather than dropping the
