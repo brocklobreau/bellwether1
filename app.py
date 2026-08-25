@@ -31,7 +31,10 @@ from scripts.refresh import run as refresh_run, log
 app = Flask(__name__, static_folder=None)
 
 SITE_DIR = os.path.join(BASE, "site")
-REFRESH_INTERVAL_SECONDS = 30 * 60  # same cadence the GitHub Actions version used
+REFRESH_INTERVAL_SECONDS = 15 * 60  # bumped from 30 min -- plan's rate limit is
+                                     # 300 calls/min, not a daily cap, and cycles
+                                     # never overlap (see the sleep below), so this
+                                     # doesn't add any risk of hitting that ceiling
 
 _scheduler_started = False
 _scheduler_lock = threading.Lock()

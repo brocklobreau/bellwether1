@@ -18,7 +18,7 @@ This version fixes both problems by being boring, ordinary infrastructure
 instead, run as a single **always-on Render Web Service** (`app.py`):
 
 - **A real internal timer**, not an AI session -- `app.py` starts a
-  background thread on boot that refreshes data every 30 minutes for as
+  background thread on boot that refreshes data every 15 minutes for as
   long as the process is running. Nothing about it depends on a Claude
   session staying alive.
 - **Real HTTP calls** (`scripts/fmp_client.py`, using `requests`) straight
@@ -84,7 +84,7 @@ kill the background refresh thread). Takes about 10 minutes.
   `https://bellwether-dashboard.onrender.com` -- that's your permanent
   dashboard link. The page will show a brief "warming up" message on first
   load while the initial data refresh runs (a minute or two), then serve
-  the real dashboard from then on, updating in place every 30 minutes.
+  the real dashboard from then on, updating in place every 15 minutes.
 - (Optional) Add a custom domain under the service's **Settings ->
   Custom Domains** if you have one.
 
@@ -99,7 +99,7 @@ kill the background refresh thread). Takes about 10 minutes.
 ## How the refresh works
 
 Once deployed, `app.py`'s background thread refreshes immediately on boot,
-then every 30 minutes for as long as the instance is running.
+then every 15 minutes for as long as the instance is running.
 `scripts/refresh.py` checks the actual current time in `America/New_York`
 and does nothing (no API calls) outside real market hours (9:30am-4:00pm
 Eastern) or on weekends -- so it only ever does real work during the window
@@ -120,12 +120,16 @@ Each real refresh cycle:
    change.
 
 **Worth knowing:** without an attached Render persistent disk (a separate
-paid add-on), the service's local filesystem is wiped on every redeploy or
-restart -- `results/history/`'s rolling snapshots reset to whatever was
-last committed to git, though `results/latest.json` and the dashboard
-itself rebuild fresh within the next refresh cycle either way. Add a disk
-under the service's **Settings -> Disks** if you want history to survive
-restarts.
+paid add-on, **$0.25/GB/month** -- 1GB is plenty), the service's local
+filesystem is wiped on every redeploy or restart -- `results/history/`'s
+rolling snapshots reset to whatever was last committed to git, so a Track
+Record entry that only exists in that day's live snapshots (e.g. a ticker
+that flipped into a signal after the last code push) disappears the next
+time we ship a change. `results/latest.json` and the dashboard itself
+rebuild fresh either way, so only Track Record history is at risk. Add a
+disk under the service's **Settings -> Disks** (name `bellwether-data`,
+mount path `/opt/render/project/src/results`, size 1GB -- matches the
+`disk:` block in `render.yaml`) if you want history to survive restarts.
 
 ## Adding portfolio trades
 
