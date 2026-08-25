@@ -1595,7 +1595,7 @@ def generate_html(payload=None):
 
       <footer>
         <div class="disclaimer">{esc(market_note) if market_note else ''} This is a research tool built from public web data and a rules-based scoring model — not financial advice. Verify anything before trading on it.</div>
-        <div>Next refresh: top of the hour, market hours, weekdays.</div>
+        <div>Next refresh: every 15 minutes, market hours, weekdays.</div>
       </footer>
 
     </main>
