@@ -16,6 +16,7 @@ Every function returns already-parsed JSON (a dict or list) or raises
 FMPError with a message that says plainly what went wrong -- callers should
 let that surface rather than silently substituting guessed data.
 """
+import collections
 import os
 import time
 import requests
@@ -23,6 +24,24 @@ import requests
 BASE_URL = "https://financialmodelingprep.com/stable"
 TIMEOUT = 20
 MAX_RETRIES = 3
+
+# Proactive pacing, not just reactive 429 retries -- added 2026-08-27 when the
+# day-trade/investing screeners started pulling much bigger candidate pools
+# (dozens of tickers x several endpoints each per cycle). Stays safely under
+# a 300-calls/min plan limit instead of finding the ceiling by tripping it.
+RATE_LIMIT_PER_MIN = 250
+_call_times = collections.deque()
+
+
+def _throttle():
+    now = time.time()
+    while _call_times and now - _call_times[0] > 60:
+        _call_times.popleft()
+    if len(_call_times) >= RATE_LIMIT_PER_MIN:
+        sleep_for = 60 - (now - _call_times[0]) + 0.1
+        if sleep_for > 0:
+            time.sleep(sleep_for)
+    _call_times.append(time.time())
 
 
 class FMPError(RuntimeError):
@@ -54,6 +73,7 @@ def _get(path, params=None):
     url = f"{BASE_URL}/{path}"
     last_err = None
     for attempt in range(1, MAX_RETRIES + 1):
+        _throttle()
         try:
             resp = requests.get(url, params=params, timeout=TIMEOUT)
         except requests.RequestException as e:
@@ -152,4 +172,12 @@ def biggest_gainers():
 
 def biggest_losers():
     data = _get("biggest-losers")
+    return data if isinstance(data, list) else []
+
+
+def shares_float_all(page=0, limit=1000):
+    """Bulk float-shares listing (up to `limit` symbols per page) -- used to
+    rank day-trade candidates by float instead of fetching float one symbol
+    at a time (added 2026-08-27 for the low-float day-trade screener)."""
+    data = _get("shares-float-all", {"page": page, "limit": limit})
     return data if isinstance(data, list) else []

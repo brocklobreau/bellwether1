@@ -91,6 +91,86 @@ KNOWN_ETF_DENYLIST = {
     "LABU", "LABD", "FNGU", "FNGD", "NUGT", "DUST", "JNUG", "JDST",
 }
 
+# --- Screener redesign (2026-08-27, user-reported) ---------------------
+# Both screeners used to be small, static, hand-picked ticker lists that
+# leaned on the SAME composite scoring formula -- so "day trade" and
+# "invest" picks kept converging on the same familiar large-cap names
+# instead of actually screening for what makes a good short-term trade
+# (volatile, liquid, room to move) vs. a good long-term hold (fundamentals,
+# quality, valuation). Both now pull a genuinely large, dynamic candidate
+# pool from FMP's company screener every cycle, cheaply pre-filter it down
+# to a shortlist using only data the screener call already returned (no
+# extra network calls), and only run the expensive full fundamentals+
+# technicals+news fetch on that shortlist -- same shape as the existing
+# day-trade discovery step already used, just applied to both now.
+SCREENER_SHORTLIST_SIZE = 40  # user-chosen depth per screener per cycle
+LOW_FLOAT_REFERENCE_SHARES = 50_000_000  # "low float" reference point for the day-trade ranking boost below
+
+
+def fetch_float_lookup(pages=3):
+    """symbol -> float share count, built from a few pages of FMP's bulk
+    shares-float-all endpoint (up to 1000 symbols/page) rather than one
+    network call per candidate. Missing/failed pages just mean fewer
+    symbols get the low-float ranking boost, not a hard failure."""
+    lookup = {}
+    for page in range(pages):
+        try:
+            rows = fmp.shares_float_all(page=page, limit=1000)
+        except fmp.FMPError as e:
+            log(f"shares-float-all page {page} failed: {e}")
+            break
+        if not rows:
+            break
+        for row in rows:
+            sym = row.get("symbol")
+            fs = row.get("floatShares") or row.get("freeFloat")
+            if sym and fs:
+                lookup[sym] = fs
+    return lookup
+
+
+def rank_day_trade_candidates(candidates, float_lookup, limit=SCREENER_SHORTLIST_SIZE):
+    """Cheap pre-filter using only fields already on hand (beta, volume from
+    the screener/movers rows; float from fetch_float_lookup) -- favors
+    volatile, liquid, LOW-float names, which is what actually makes a stock
+    tradeable intraday. This replaces the old marketCapMoreThan=5B filter,
+    which was screening FOR mega-caps -- the opposite of a day-trade
+    screen's job, and the direct cause of it overlapping with the investing
+    side."""
+    scored = []
+    for sym, row in candidates.items():
+        beta = row.get("beta") or 1.0
+        volume = row.get("volume") or 0
+        float_shares = float_lookup.get(sym)
+        float_boost = min(LOW_FLOAT_REFERENCE_SHARES / float_shares, 5.0) if float_shares else 1.0
+        rank = max(beta, 0.1) * (volume / 1_000_000) * float_boost
+        scored.append((rank, sym))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [sym for _, sym in scored[:limit]]
+
+
+def pick_diverse_investing_candidates(rows, already_tracked, limit=SCREENER_SHORTLIST_SIZE):
+    """Round-robins across sectors instead of taking the screener response's
+    default order (roughly market-cap descending), which would just hand
+    back the same handful of mega-caps every cycle -- the exact complaint
+    that prompted this redesign. Each sector's own internal order is kept;
+    sectors are just interleaved so the shortlist is genuinely diverse."""
+    by_sector = {}
+    for row in rows:
+        sym = row.get("symbol")
+        if not sym or sym in already_tracked:
+            continue
+        by_sector.setdefault(row.get("sector") or "Other", []).append(row)
+
+    picked = []
+    while len(picked) < limit and any(by_sector.values()):
+        for bucket in by_sector.values():
+            if bucket:
+                picked.append(bucket.pop(0))
+            if len(picked) >= limit:
+                break
+    return picked
+
 
 MARKET_TZ = ZoneInfo("America/New_York")
 MARKET_OPEN = (9, 30)   # 9:30 AM ET
@@ -267,7 +347,6 @@ def run():
         with open(WATCHLIST_PATH) as f:
             wl = json.load(f)
         watchlist = wl.get("watchlist", [])
-        screener_universe = wl.get("screener_universe", [])
 
         previous = load_previous() or {}
         prev_watchlist_by_ticker = {r["ticker"]: r for r in previous.get("watchlist_results", [])}
@@ -297,12 +376,31 @@ def run():
                 noteworthy.append((symbol, reasons))
             watchlist_results.append(res)
 
-        # --- 2. Screener universe (full fetch) -> screener_picks + investing discovery pool ---
+        # --- 2. Investing screener: broad dynamic pull -> screener_picks + investing discovery pool ---
+        # Mid/large-cap, actively-traded, non-ETF/fund names -- a wide net on
+        # purpose. isEtf/isFund are asked for at the API level AND checked
+        # again locally (is_etf_or_fund) since the query-param filter isn't
+        # fully trustworthy on its own.
+        investing_rows = []
+        try:
+            investing_rows = fmp.company_screener(
+                marketCapMoreThan=2_000_000_000, volumeMoreThan=200_000,
+                isActivelyTrading="true", isEtf="false", isFund="false",
+                exchange="NASDAQ,NYSE", limit=1000,
+            )
+        except fmp.FMPError as e:
+            log(f"investing screener failed: {e}")
+
+        investing_rows = [r for r in investing_rows if not is_etf_or_fund(r.get("symbol"), screener_row=r)]
+        investing_shortlist = pick_diverse_investing_candidates(investing_rows, already_tracked=set(watchlist))
+        log(f"investing screener: {len(investing_rows)} candidates pulled, {len(investing_shortlist)} shortlisted for scoring")
+
         screener_results = []
-        for symbol in screener_universe:
-            log(f"screener: {symbol}")
+        for row in investing_shortlist:
+            symbol = row.get("symbol")
+            log(f"investing screen: {symbol}")
             try:
-                res = fetch_and_score(symbol, full=True)
+                res = fetch_and_score(symbol, name_hint=row.get("companyName"), full=True)
             except fmp.FMPError as e:
                 log(f"  FAILED {symbol}: {e}")
                 continue
@@ -317,13 +415,14 @@ def run():
             r["source"] = "screened"
             r["source_label"] = "Growth screen"
 
-        # --- 3. Day-trade discovery: company screener + movers lists ---
+        # --- 3. Day-trade discovery: broad dynamic pull (volatile/liquid/low-float) + movers lists ---
         candidates = {}
         try:
             for row in fmp.company_screener(
-                marketCapMoreThan=5_000_000_000, volumeMoreThan=3_000_000,
-                betaMoreThan=1.1, isActivelyTrading="true",
-                exchange="NASDAQ,NYSE", limit=30,
+                marketCapMoreThan=50_000_000, marketCapLowerThan=10_000_000_000,
+                priceMoreThan=2, volumeMoreThan=1_000_000, betaMoreThan=1.3,
+                isActivelyTrading="true", isEtf="false", isFund="false",
+                exchange="NASDAQ,NYSE,AMEX", limit=1000,
             ):
                 sym = row.get("symbol")
                 if sym and not is_etf_or_fund(sym, screener_row=row):
@@ -342,14 +441,17 @@ def run():
             except fmp.FMPError as e:
                 log(f"{label} failed: {e}")
 
-        already_tracked = set(watchlist) | set(screener_universe)
-        scan_pool = [s for s in candidates if s not in already_tracked]
-        log(f"day-trade scan pool: {len(scan_pool)} candidates")
+        already_tracked = set(watchlist) | {r["ticker"] for r in screener_results}
+        raw_pool = {s: row for s, row in candidates.items() if s not in already_tracked}
+        float_lookup = fetch_float_lookup()
+        scan_pool = rank_day_trade_candidates(raw_pool, float_lookup)
+        log(f"day-trade scan pool: {len(raw_pool)} candidates pulled, {len(scan_pool)} shortlisted "
+            f"({sum(1 for s in scan_pool if s in float_lookup)} with known float)")
 
         day_trade_scored = []
         dropped_short = []
         scan_failures = []
-        for symbol in scan_pool[:30]:  # hard cap so one run can't run away
+        for symbol in scan_pool:
             try:
                 res = fetch_and_score(symbol, full=False, source="screened", source_label="Today's mover")
             except fmp.FMPError as e:
@@ -364,7 +466,7 @@ def run():
         day_trade_pool = day_trade_scored[:8]
 
         scan_note = (
-            f"Day-trade scan: {len(scan_pool[:30])} candidates checked, "
+            f"Day-trade scan: {len(scan_pool)} candidates checked, "
             f"{len(dropped_short)} dropped (short direction, long-only preference), "
             f"{len(scan_failures)} failed to fetch, {len(day_trade_pool)} kept."
         )
