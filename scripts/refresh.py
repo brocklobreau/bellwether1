@@ -143,6 +143,9 @@ def fetch_float_lookup(pages=3):
             elif not logged_sample:
                 log(f"shares-float-all: unrecognized row shape, sample keys/values: {row}")
                 logged_sample = True
+    if lookup:
+        sample = list(lookup.items())[:5]
+        log(f"shares-float-all: {len(lookup)} symbols parsed OK, sample: {sample}")
     return lookup
 
 
@@ -460,6 +463,7 @@ def run():
 
         already_tracked = set(watchlist) | {r["ticker"] for r in screener_results}
         raw_pool = {s: row for s, row in candidates.items() if s not in already_tracked}
+        log(f"day-trade raw_pool sample symbols: {list(raw_pool.keys())[:10]}")
         float_lookup = fetch_float_lookup()
         scan_pool = rank_day_trade_candidates(raw_pool, float_lookup)
         log(f"day-trade scan pool: {len(raw_pool)} candidates pulled, {len(scan_pool)} shortlisted "
