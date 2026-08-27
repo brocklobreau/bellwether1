@@ -111,21 +111,38 @@ def fetch_float_lookup(pages=3):
     """symbol -> float share count, built from a few pages of FMP's bulk
     shares-float-all endpoint (up to 1000 symbols/page) rather than one
     network call per candidate. Missing/failed pages just mean fewer
-    symbols get the low-float ranking boost, not a hard failure."""
+    symbols get the low-float ranking boost, not a hard failure.
+
+    The field name FMP actually uses for the float-shares count isn't
+    documented anywhere reachable (their docs pages are JS-rendered and
+    don't show a real example response, and this sandbox has no outbound
+    network to just hit the live endpoint and look) -- so this logs the
+    raw keys of the first row once, the first time it doesn't find a
+    field it recognizes, so a live cycle's logs settle it definitively
+    instead of guessing further (added 2026-08-27)."""
     lookup = {}
+    logged_sample = False
     for page in range(pages):
         try:
             rows = fmp.shares_float_all(page=page, limit=1000)
         except fmp.FMPError as e:
             log(f"shares-float-all page {page} failed: {e}")
             break
+        log(f"shares-float-all page {page}: {len(rows)} rows returned")
         if not rows:
             break
         for row in rows:
             sym = row.get("symbol")
-            fs = row.get("floatShares") or row.get("freeFloat")
+            fs = (
+                row.get("floatShares") or row.get("freeFloat")
+                or row.get("floatingShares") or row.get("shares_float")
+                or row.get("outstandingShares")
+            )
             if sym and fs:
                 lookup[sym] = fs
+            elif not logged_sample:
+                log(f"shares-float-all: unrecognized row shape, sample keys/values: {row}")
+                logged_sample = True
     return lookup
 
 
