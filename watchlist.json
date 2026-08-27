@@ -1,14 +1,8 @@
 {
-  "_comment": "Edit this file any time to change what the system tracks. 'watchlist' gets deep-dived every run. 'screener_universe' is a broader pool of quality non-mega-cap names checked for standout signals -- add/remove tickers freely.",
+  "_comment": "Edit 'watchlist' any time to change your own core tracked tickers, deep-dived every run. The old 'screener_universe' list is retired as of 2026-08-27 -- both the day-trade and investing screens now pull a large, dynamic candidate pool straight from FMP's screener every cycle instead of a fixed hand-picked list (see scripts/refresh.py), so they stop converging on the same familiar names. Nothing to edit for that anymore.",
   "watchlist": [
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA",
     "JPM", "V", "JNJ", "PG", "KO",
     "HD", "COST", "UNH", "XOM", "BRK-B"
-  ],
-  "screener_universe": [
-    "META", "AMD", "NFLX", "ADBE", "CRM",
-    "LIN", "MA", "PEP", "MCD", "DIS",
-    "AVGO", "TXN", "ORCL", "ABBV", "MRK",
-    "CAT", "GE", "LMT", "SBUX", "NKE"
   ]
 }
