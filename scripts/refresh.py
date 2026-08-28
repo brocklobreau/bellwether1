@@ -29,6 +29,7 @@ from lib.composite import detect_noteworthy
 from lib.save_results import save_run, load_previous
 from lib.dashboard import generate_html
 from lib.sentiment import score_headline
+from lib.undervalued import prescore_value_candidate, score_undervalued, rank_value_picks
 
 NEWS_FEED_MAX = 15  # rolling per-ticker headline history kept across cycles
 
@@ -175,6 +176,50 @@ def pick_diverse_investing_candidates(rows, already_tracked, limit=SCREENER_SHOR
     back the same handful of mega-caps every cycle -- the exact complaint
     that prompted this redesign. Each sector's own internal order is kept;
     sectors are just interleaved so the shortlist is genuinely diverse."""
+    by_sector = {}
+    for row in rows:
+        sym = row.get("symbol")
+        if not sym or sym in already_tracked:
+            continue
+        by_sector.setdefault(row.get("sector") or "Other", []).append(row)
+
+    picked = []
+    while len(picked) < limit and any(by_sector.values()):
+        for bucket in by_sector.values():
+            if bucket:
+                picked.append(bucket.pop(0))
+            if len(picked) >= limit:
+                break
+    return picked
+
+
+# --- Deep-value ("hidden gems") screener sizing ------------------------
+# Three stages instead of the other two screens' two, because "undervalued"
+# can't be judged from the screener response at all -- that payload carries
+# marketCap/beta/volume/sector but no valuation or profitability data. So a
+# middle stage buys the missing facts with ONE /stable/ratios call per name
+# (cheap) before committing the 10-call deep fetch to the few that survive.
+# 140 x 1 + 24 x 10 = ~380 extra calls/cycle, comfortably inside the
+# throttle in fmp_client.py at a 15-minute cadence.
+VALUE_PRESCREEN_SIZE = 140   # names bought one ratios call each
+VALUE_DEEP_SIZE = 24         # names promoted to the full fetch
+VALUE_PICKS_SHOWN = 6        # survivors surfaced on the dashboard
+
+# Deliberately excludes mega-caps. A $2T company is the most-analyzed asset
+# on earth -- the odds it is quietly 50% mispriced are poor, and the whole
+# premise here is finding what the market hasn't gotten to yet. The floor
+# keeps out the sub-$300M tier where the "cheap" numbers are mostly noise
+# and the spreads eat any edge.
+VALUE_MIN_MARKET_CAP = 300_000_000
+VALUE_MAX_MARKET_CAP = 50_000_000_000
+
+
+def pick_value_prescreen_pool(rows, already_tracked, limit=VALUE_PRESCREEN_SIZE):
+    """Sector round-robin over the raw screener rows, same reasoning as
+    pick_diverse_investing_candidates: the screener returns roughly market-cap
+    descending, so taking the head of the list would hand back the same large
+    names every cycle and never reach the overlooked end of the market, which
+    is the only place this screen is likely to find anything."""
     by_sector = {}
     for row in rows:
         sym = row.get("symbol")
@@ -435,6 +480,85 @@ def run():
             r["source"] = "screened"
             r["source_label"] = "Growth screen"
 
+        # --- 2b. Deep-value "hidden gems" screener (3-stage) ---
+        # Cheap + genuinely good + hasn't moved yet. See lib/undervalued.py
+        # for what this can and can't claim -- in short, it enforces the
+        # preconditions for an early entry, it does not predict one.
+        value_rows = []
+        try:
+            value_rows = fmp.company_screener(
+                marketCapMoreThan=VALUE_MIN_MARKET_CAP,
+                marketCapLowerThan=VALUE_MAX_MARKET_CAP,
+                priceMoreThan=3, volumeMoreThan=150_000,
+                isActivelyTrading="true", isEtf="false", isFund="false",
+                exchange="NASDAQ,NYSE", limit=1000,
+            )
+        except fmp.FMPError as e:
+            log(f"value screener failed: {e}")
+
+        value_rows = [r for r in value_rows if not is_etf_or_fund(r.get("symbol"), screener_row=r)]
+        value_prescreen = pick_value_prescreen_pool(
+            value_rows, already_tracked=set(watchlist) | {r["ticker"] for r in screener_results}
+        )
+        log(f"value screener: {len(value_rows)} candidates pulled, "
+            f"{len(value_prescreen)} going to ratios prescreen")
+
+        # Stage 2: one ratios call each, rank on cheapness x quality.
+        prescored = []
+        prescreen_rejects = {}
+        for row in value_prescreen:
+            symbol = row.get("symbol")
+            try:
+                ratios_row = fmp.ratios(symbol)
+            except fmp.FMPError as e:
+                prescreen_rejects[symbol] = f"ratios fetch failed: {e}"
+                continue
+            score, reject = prescore_value_candidate(ratios_row)
+            if reject:
+                prescreen_rejects[symbol] = reject
+                continue
+            prescored.append((score, symbol, row))
+
+        prescored.sort(key=lambda x: x[0], reverse=True)
+        value_deep = prescored[:VALUE_DEEP_SIZE]
+        log(f"value prescreen: {len(prescored)} passed, {len(prescreen_rejects)} rejected "
+            f"(cheap+quality gate), top {len(value_deep)} promoted to deep fetch")
+
+        # Stage 3: full fetch + deep scoring + vetoes on the survivors only.
+        value_results = []
+        for score, symbol, row in value_deep:
+            log(f"value screen: {symbol} (prescore {score})")
+            try:
+                res = fetch_and_score(symbol, name_hint=row.get("companyName"), full=True,
+                                      source="screened", source_label="Deep value")
+            except fmp.FMPError as e:
+                log(f"  FAILED {symbol}: {e}")
+                continue
+            res["undervalued"] = score_undervalued(res)
+            res["undervalued"]["prescore"] = score
+            value_results.append(res)
+
+        value_picks = rank_value_picks(value_results, limit=VALUE_PICKS_SHOWN)
+        value_rejected = [
+            {
+                "ticker": r["ticker"],
+                "name": r.get("name"),
+                "score": (r.get("undervalued") or {}).get("undervalued_score"),
+                "reasons": (r.get("undervalued") or {}).get("veto_reasons") or [],
+            }
+            for r in value_results
+            if (r.get("undervalued") or {}).get("disqualified")
+        ]
+        value_note = (
+            f"Deep-value scan: {len(value_rows)} screened, {len(value_prescreen)} prescreened, "
+            f"{len(value_results)} deep-scored, {len(value_rejected)} disqualified, "
+            f"{len(value_picks)} kept."
+        )
+        log(value_note)
+        if not value_picks:
+            log("  No name cleared every value gate this cycle -- showing none rather than "
+                "relaxing the filters to fill the tab.")
+
         # --- 3. Day-trade discovery: broad dynamic pull (volatile/liquid/low-float) + movers lists ---
         candidates = {}
         try:
@@ -504,6 +628,9 @@ def run():
             "watchlist_results": watchlist_results,
             "screener_picks": screener_picks,
             "discovered_candidates": discovered_candidates,
+            "value_picks": value_picks,
+            "value_rejected": value_rejected,
+            "value_scan_note": value_note,
             "pending_tickers": [],
             "market_note": market_note,
             "day_trade_scan_note": scan_note,
