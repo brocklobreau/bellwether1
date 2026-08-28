@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timezone
 
 from lib.portfolio import load_portfolio, compute_portfolio
-from lib.track_record import build_track_record
+from lib.track_record import build_track_record, STOP_LOSS_PCT
 from lib.day_trade_track_record import build_day_trade_track_record
 from lib.day_trade_momentum import build_momentum
 from lib.sectors import get_sector, sector_breakdown
@@ -258,6 +258,150 @@ RATING_TONE = {
     "Worth watching": "warning", "Reasonable, some caveats": "warning",
     "Not today": "critical", "Not compelling right now": "critical",
 }
+
+VALUE_RATING_COLOR = {
+    "Deep value + quality": "var(--good)",
+    "Undervalued, worth the work": "var(--accent)",
+    "Mildly cheap": "var(--warning)",
+    "Not compelling": "var(--critical)",
+}
+
+
+def value_card(r):
+    """One deep-value pick. Leads with the estimated re-rating upside because
+    that is the number the screen exists to produce, but keeps the arithmetic
+    behind it visible in the notes rather than presenting it as an oracle."""
+    u = r.get("undervalued") or {}
+    rating = u.get("undervalued_rating") or "—"
+    color = VALUE_RATING_COLOR.get(rating, "var(--ink-muted)")
+    upside = u.get("rerating_upside_pct")
+    upside_str = f"{upside:+.0f}%" if upside is not None else "—"
+    levels = r.get("investing_levels") or {}
+    buy_str = fmt_zone(levels.get("entry_zone"))
+    fund = r.get("fundamental") or {}
+    tech = r.get("technical") or {}
+
+    pe = fund.get("pe_ratio")
+    rp = tech.get("range_position_pct")
+    facts = []
+    if pe is not None:
+        facts.append(f"P/E {pe:.1f}")
+    if fund.get("revenue_growth_pct") is not None:
+        facts.append(f"rev {fund['revenue_growth_pct']:+.0f}%")
+    if fund.get("profit_margin_pct") is not None:
+        facts.append(f"margin {fund['profit_margin_pct']:.0f}%")
+    if rp is not None:
+        facts.append(f"{rp:.0f}% of 52w range")
+    facts_str = " · ".join(facts)
+
+    notes_html = "\n".join(f"<li>{esc(n)}</li>" for n in (u.get("notes") or [])[:6])
+    sector_str = f" · {esc(r.get('sector'))}" if r.get("sector") else ""
+
+    # Trading-at vs worth-about, side by side. The percentage above is the
+    # same arithmetic; people read dollars faster than they read percentages,
+    # and seeing both makes the claim concrete enough to argue with.
+    cur_price = u.get("current_price") if u.get("current_price") is not None else r.get("price")
+    fair_price = u.get("fair_value_price")
+    price_block = ""
+    if cur_price is not None and fair_price is not None:
+        cur_pe, fair_pe = u.get("current_pe"), u.get("fair_pe")
+        pe_line = (f"{cur_pe:.1f}x &rarr; {fair_pe:.1f}x earnings"
+                   if cur_pe is not None and fair_pe is not None else "")
+        price_block = f"""<div class="value-prices">
+        <div class="value-price-row">
+          <span class="value-price-label">Trading at</span>
+          <span class="value-price-num">${cur_price:,.2f}</span>
+        </div>
+        <div class="value-price-row value-price-fair">
+          <span class="value-price-label">Worth about</span>
+          <span class="value-price-num">${fair_price:,.2f}</span>
+        </div>
+        <div class="value-price-pe">{pe_line}</div>
+      </div>"""
+    elif cur_price is not None:
+        price_block = f"""<div class="value-prices">
+        <div class="value-price-row">
+          <span class="value-price-label">Trading at</span>
+          <span class="value-price-num">${cur_price:,.2f}</span>
+        </div>
+        <div class="value-price-pe">fair value not computable</div>
+      </div>"""
+
+    return f"""<div class="pick-card value-card" style="--pill-color:{color}">
+      <div class="pick-top">
+        <span class="pick-ticker">{esc(r.get('ticker'))}</span>
+        <span class="pill" style="--pill-color:{color}">{esc(rating)}</span>
+      </div>
+      <div class="pick-company">{esc(r.get('name',''))}{sector_str}</div>
+      <div class="value-headline">
+        <div class="value-upside">{upside_str}<span class="value-upside-label">est. upside to fair value</span></div>
+        <div class="value-score">{u.get('undervalued_score','—')}<span class="pick-score-label">value score</span></div>
+      </div>
+      {price_block}
+      <div class="value-facts">{esc(facts_str)}</div>
+      <ul class="rationale value-notes">{notes_html}</ul>
+      <div class="pick-buy">Buy zone: {buy_str}</div>
+    </div>"""
+
+
+def value_tab_html(picks, rejected, scan_note):
+    """The Hidden Gems panel. Deliberately shows the rejection list alongside
+    the picks: a screen that only ever displays its winners teaches you
+    nothing about its own selectivity, and the rejections are where most of
+    this screen's actual work shows up."""
+    blurb = (
+        "Stocks that are <b>cheap on their own numbers</b>, attached to a business that is actually "
+        "<b>good</b> (profitable, cash-generative, growing, not over-levered), and that "
+        "<b>have not moved yet</b>. That last condition is the closest anything can honestly get to "
+        "&ldquo;before it pops&rdquo;: a name near its 52-week high, or one that just ran 35%+ in two weeks, is "
+        "vetoed outright here &mdash; whatever the story was, the market already priced it. Nothing on this page "
+        "predicts a rise. It enforces the conditions that have to hold for an early entry to still be "
+        "available, and most candidates fail them."
+    )
+
+    if picks:
+        picks_html = f'<div class="screener-grid">{"".join(value_card(r) for r in picks)}</div>'
+    else:
+        picks_html = (
+            '<div class="empty-note">No stock cleared every gate this cycle. That is a real result, not a '
+            'failure &mdash; the filters are not loosened to keep this tab populated, because a padded list of '
+            'mediocre &ldquo;bargains&rdquo; is worse than an empty one.</div>'
+        )
+
+    rejected_html = ""
+    if rejected:
+        rows = "\n".join(
+            f"<tr><td class='mono'>{esc(x.get('ticker'))}</td>"
+            f"<td>{esc(x.get('name') or '')}</td>"
+            f"<td class='mono'>{x.get('score') if x.get('score') is not None else '—'}</td>"
+            f"<td>{esc('; '.join(x.get('reasons') or []))}</td></tr>"
+            for x in rejected[:25]
+        )
+        rejected_html = f"""
+        <section>
+          <h2 class="section-title">Disqualified this cycle</h2>
+          <p class="tab-blurb">Names that scored well on cheapness and quality but failed a hard gate. Shown
+            because why a candidate was rejected is usually more informative than the ones that passed &mdash;
+            and because a screen you cannot audit is a screen you should not trust.</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Ticker</th><th>Company</th><th>Score</th><th>Why it was dropped</th></tr></thead>
+              <tbody>{rows}</tbody>
+            </table>
+          </div>
+        </section>"""
+
+    note_html = f'<p class="tab-blurb">{esc(scan_note)}</p>' if scan_note else ""
+
+    return f"""
+    <section>
+      <h2 class="section-title">Hidden gems</h2>
+      <p class="tab-blurb">{blurb}</p>
+      {note_html}
+      {picks_html}
+    </section>
+    {rejected_html}"""
+
 
 NEWS_TONE_COLOR = {"positive": "var(--good)", "negative": "var(--critical)", "neutral": "var(--warning)"}
 
@@ -557,10 +701,15 @@ def track_record_tab_html():
         st = STATUS.get(c["signal"], STATUS["NO DATA"])
         start_date = (c.get("start_ts") or "")[:10]
         end_date = (c.get("end_ts") or "")[:10]
+        reason = c.get("close_reason")
+        reason_badge = (
+            ' <span class="pill" style="--pill-color:var(--critical);font-size:10px;">stop-loss</span>'
+            if reason == "stop_loss" else ""
+        )
         return f"""
       <tr>
         <td class="ticker-cell"><div class="ticker">{esc(c['ticker'])}</div><div class="company">{esc(c.get('name') or '')}</div></td>
-        <td class="signal-cell"><span class="pill" style="--pill-color:{st['color']}">{st['icon']} {st['label']}</span></td>
+        <td class="signal-cell"><span class="pill" style="--pill-color:{st['color']}">{st['icon']} {st['label']}</span>{reason_badge}</td>
         <td class="price-cell">${c['start_price']:,.2f}</td>
         <td class="price-cell">{'$' + format(c['end_price'], ',.2f') if c['end_price'] is not None else '—'}</td>
         <td class="price-cell {cls}">{pct(c['return_pct'])}</td>
@@ -575,13 +724,16 @@ def track_record_tab_html():
     buy_hit = summary["buy_hit_rate_pct"]
     sell_hit = summary["sell_hit_rate_pct"]
     avg_ret = summary["avg_return_pct"]
+    cum_ret = summary["cumulative_return_pct"]
+    stop_count = summary["stop_loss_count"]
 
     return f"""
     <h2 class="section-title">Signal track record</h2>
     <p class="tab-blurb">Every BUY/SELL call the system has made, graded against what actually happened to the
-      price afterward — a BUY is "correct" if it finished up, a SELL if it finished down. Based on
-      {tr['snapshot_count']} hourly snapshots since {esc(tr['first_snapshot_at'][:10])}. HOLD isn't graded —
-      it's not a directional bet.</p>
+      price afterward — a BUY is "correct" if it finished up, a SELL if it finished down. A call stays open
+      through a fade to HOLD and only closes on a real reversal (BUY→SELL or SELL→BUY) or if it moves against
+      you more than {STOP_LOSS_PCT:.0f}% first (marked "stop-loss" below) — HOLD itself isn't graded, it's not
+      a directional bet. Based on {tr['snapshot_count']} hourly snapshots since {esc(tr['first_snapshot_at'][:10])}.</p>
 
     <div class="summary-strip">
       <div class="summary-chip"><b>{f'{hit:.0f}%' if hit is not None else '—'}</b>&nbsp;overall hit rate</div>
@@ -589,6 +741,8 @@ def track_record_tab_html():
       <div class="summary-chip"><b>{f'{buy_hit:.0f}%' if buy_hit is not None else '—'}</b>&nbsp;BUY hit rate</div>
       <div class="summary-chip"><b>{f'{sell_hit:.0f}%' if sell_hit is not None else '—'}</b>&nbsp;SELL hit rate</div>
       <div class="summary-chip {'pnl-good' if (avg_ret or 0) >= 0 else 'pnl-bad'}"><b>{pct(avg_ret)}</b>&nbsp;avg return/call</div>
+      <div class="summary-chip {'pnl-good' if (cum_ret or 0) >= 0 else 'pnl-bad'}"><b>{pct(cum_ret)}</b>&nbsp;cumulative return</div>
+      <div class="summary-chip"><b>{stop_count}</b>&nbsp;stopped out</div>
     </div>
 
     <h2 class="section-title" style="margin-top:24px;">Closed calls</h2>
@@ -787,6 +941,9 @@ def generate_html(payload=None):
     discovered = payload.get("discovered_candidates", [])
     checklist_pool = results + discovered  # checklist tabs rank the watchlist *and* screened finds together
     screener = payload.get("screener_picks", [])
+    value_picks = payload.get("value_picks", [])
+    value_rejected = payload.get("value_rejected", [])
+    value_scan_note = payload.get("value_scan_note", "")
     pending = payload.get("pending_tickers", [])
     generated_at = payload.get("generated_at")
     market_note = payload.get("market_note", "")
@@ -837,6 +994,8 @@ def generate_html(payload=None):
         "levels for a position you might hold for months. Includes the watchlist plus screened growth "
         "candidates (tagged below the ticker)."
     ) if checklist_pool else '<div class="empty-note">No data yet.</div>'
+
+    value_html = value_tab_html(value_picks, value_rejected, value_scan_note)
 
     buy_count = sum(1 for r in results if r.get("signal") == "BUY")
     sell_count = sum(1 for r in results if r.get("signal") == "SELL")
@@ -1376,6 +1535,53 @@ def generate_html(payload=None):
   .pick-score {{ font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; }}
   .pick-score-label {{ font-family: 'IBM Plex Sans', sans-serif; font-size: 10.5px; color: var(--ink-faint); font-weight: 400; }}
   .pick-buy {{ margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--good); font-variant-numeric: tabular-nums; }}
+  .value-headline {{
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin: 4px 0 8px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }}
+  .value-upside {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 600;
+    line-height: 1.1; color: var(--pill-color); font-variant-numeric: tabular-nums;
+    display: flex; flex-direction: column;
+  }}
+  .value-upside-label {{
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 10px; font-weight: 400;
+    color: var(--ink-faint); letter-spacing: 0.02em; margin-top: 2px;
+  }}
+  .value-score {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 17px; font-weight: 600;
+    color: var(--ink-muted); font-variant-numeric: tabular-nums;
+    display: flex; flex-direction: column; align-items: flex-end; text-align: right;
+  }}
+  .value-prices {{
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 11px; margin-bottom: 9px;
+  }}
+  .value-price-row {{
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  }}
+  .value-price-row + .value-price-row {{ margin-top: 3px; }}
+  .value-price-num {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600;
+    color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.2;
+  }}
+  .value-price-fair .value-price-num {{ color: var(--pill-color); }}
+  .value-price-label {{
+    font-size: 10px; color: var(--ink-faint); letter-spacing: 0.03em;
+    text-transform: uppercase; white-space: nowrap;
+  }}
+  .value-price-pe {{
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace; text-align: right;
+    font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums;
+  }}
+  .value-facts {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-muted);
+    margin-bottom: 8px; font-variant-numeric: tabular-nums;
+  }}
+  ul.value-notes {{ max-width: none; font-size: 11.5px; }}
+  td.mono {{ font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }}
 
   .empty-note, .pending-note {{
     font-size: 13px;
@@ -1504,6 +1710,7 @@ def generate_html(payload=None):
         <button class="nav-btn is-active" data-tab="overview" role="tab" aria-selected="true">Home</button>
         <button class="nav-btn" data-tab="daytrade" role="tab" aria-selected="false">Day Trade</button>
         <button class="nav-btn" data-tab="investing" role="tab" aria-selected="false">Investing</button>
+        <button class="nav-btn" data-tab="gems" role="tab" aria-selected="false">Hidden Gems</button>
         <button class="nav-btn" data-tab="portfolio" role="tab" aria-selected="false">Portfolio</button>
         <button class="nav-btn" data-tab="trackrecord" role="tab" aria-selected="false">Track Record</button>
       </nav>
@@ -1579,6 +1786,10 @@ def generate_html(payload=None):
             {screener_html}
           </div>
         </section>
+      </div>
+
+      <div class="tab-panel" data-panel="gems">
+        {value_html}
       </div>
 
       <div class="tab-panel" data-panel="portfolio">
