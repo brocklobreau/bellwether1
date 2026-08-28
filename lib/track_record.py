@@ -4,15 +4,30 @@ past BUY/SELL calls actually work out? No network, pure math over what's
 already been saved by lib/save_results.save_run().
 
 A "call" is defined as a signal entering BUY or SELL for a ticker (from
-whatever it was before) and staying there until it changes again. HOLD isn't
-graded -- it's not a directional bet. Only lib/watchlist_results is used
-(a stable, consistent cohort run every hour); discovered_candidates rotate
-day to day and would make the history noisy and hard to compare.
+whatever it was before) and staying there until one of two things happens:
 
-A call is CLOSED once the signal moves off BUY/SELL to something else --
-graded against the price at the moment it closed. A call still showing the
-same signal as of the latest snapshot is OPEN -- graded provisionally
-against the latest known price, and can still flip either way.
+1. A real reversal -- a BUY call closes when the signal flips all the way
+   to SELL (and vice versa). A fade to HOLD does NOT close the call -- HOLD
+   just means conviction softened, not that the thesis reversed, and
+   closing on every dip into HOLD was chopping single theses into several
+   noisy, meaningless "calls" that didn't reflect how anyone would actually
+   trade this (2026-08-25, user-requested: "make it as realistic and
+   actually profitable as possible").
+2. The stop-loss safety net below fires first.
+
+STOP_LOSS_PCT exists because #1 alone is dangerous on its own: a stock can
+crash while the *composite* score (fundamentals/sentiment/technicals
+blended) still hasn't fully reversed to SELL, and a pure "wait for the
+opposite signal" rule would ride that loss the entire way down. Real risk
+management cuts a loser fast even if the longer thesis hasn't technically
+flipped yet -- so any open call that's down past STOP_LOSS_PCT closes right
+there, graded as a loss, independent of what the signal is doing. This is a
+single tunable constant, not derived from your data -- adjust it if it's
+firing on normal noise (too tight) or not protecting you (too loose).
+
+Only lib/watchlist_results is used (a stable, consistent cohort run every
+cycle); discovered_candidates rotate day to day and would make the history
+noisy and hard to compare.
 """
 import json
 import os
@@ -21,6 +36,8 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HISTORY_DIR = os.path.join(BASE, "results", "history")
 
 GRADED_SIGNALS = {"BUY", "SELL"}
+REVERSAL_OF = {"BUY": "SELL", "SELL": "BUY"}
+STOP_LOSS_PCT = 10.0  # see module docstring -- a judgment call, not derived
 
 
 def _load_snapshots():
@@ -44,6 +61,15 @@ def _load_snapshots():
     return snaps
 
 
+def _unrealized_pct(call, price):
+    start_price = call["start_price"]
+    if not start_price:
+        return None
+    move_pct = (price - start_price) / start_price * 100
+    # For a SELL call, being "down" means the price went UP against you.
+    return move_pct if call["signal"] == "BUY" else -move_pct
+
+
 def build_track_record():
     snapshots = _load_snapshots()
 
@@ -62,7 +88,6 @@ def build_track_record():
 
     for ts, snap in snapshots:
         results = snap.get("watchlist_results", [])
-        seen_tickers = set()
         for r in results:
             ticker = r.get("ticker")
             signal = r.get("signal")
@@ -70,34 +95,51 @@ def build_track_record():
             score = r.get("composite_score")
             if not ticker or price is None:
                 continue
-            seen_tickers.add(ticker)
             cur = active.get(ticker)
 
+            # Stop-loss check happens first, against whatever call is open,
+            # regardless of this cycle's signal -- a loser gets cut even if
+            # the composite score hasn't caught up yet.
+            if cur is not None:
+                move = _unrealized_pct(cur, price)
+                if move is not None and move <= -STOP_LOSS_PCT:
+                    closed_calls.append(_close_call(cur, ts, price, reason="stop_loss"))
+                    active[ticker] = None
+                    cur = None
+
             if signal in GRADED_SIGNALS:
-                if cur is None or cur["signal"] != signal:
-                    # a new call starts -- close out whatever was open first
-                    if cur is not None:
-                        closed_calls.append(_close_call(cur, ts, price))
+                if cur is None:
                     active[ticker] = {
                         "ticker": ticker, "name": r.get("name"), "signal": signal,
                         "start_ts": ts, "start_price": price, "start_score": score,
                         "last_ts": ts, "last_price": price,
                     }
-                else:
+                elif cur["signal"] == signal:
                     cur["last_ts"] = ts
                     cur["last_price"] = price
+                elif signal == REVERSAL_OF.get(cur["signal"]):
+                    # Real reversal (BUY -> SELL or SELL -> BUY) -- close the
+                    # old call and open a new one in the opposite direction.
+                    closed_calls.append(_close_call(cur, ts, price, reason="reversal"))
+                    active[ticker] = {
+                        "ticker": ticker, "name": r.get("name"), "signal": signal,
+                        "start_ts": ts, "start_price": price, "start_score": score,
+                        "last_ts": ts, "last_price": price,
+                    }
             else:
+                # HOLD (or NO DATA) -- conviction faded but the thesis hasn't
+                # reversed. Leave the call open; just track the latest price
+                # so an open call's "return so far" stays current.
                 if cur is not None:
-                    closed_calls.append(_close_call(cur, ts, price))
-                    active[ticker] = None
+                    cur["last_ts"] = ts
+                    cur["last_price"] = price
 
     open_calls = [c for c in active.values() if c is not None]
     open_calls = [_grade_open(c) for c in open_calls]
     closed_calls.sort(key=lambda c: c["end_ts"], reverse=True)
     open_calls.sort(key=lambda c: c["start_ts"], reverse=True)
 
-    graded = [c for c in closed_calls]  # every closed call has a real outcome
-    summary = _summarize(graded)
+    summary = _summarize(closed_calls)
 
     return {
         "insufficient_history": False,
@@ -110,7 +152,7 @@ def build_track_record():
     }
 
 
-def _close_call(call, end_ts, end_price):
+def _close_call(call, end_ts, end_price, reason):
     start_price = call["start_price"]
     ret_pct = (end_price - start_price) / start_price * 100 if start_price else None
     correct = None
@@ -121,7 +163,7 @@ def _close_call(call, end_ts, end_price):
         "start_ts": call["start_ts"], "start_price": start_price,
         "end_ts": end_ts, "end_price": end_price,
         "return_pct": round(ret_pct, 2) if ret_pct is not None else None,
-        "correct": correct, "status": "closed",
+        "correct": correct, "status": "closed", "close_reason": reason,
     }
 
 
@@ -147,6 +189,7 @@ def _summarize(closed_calls):
             "total_closed": 0, "hit_rate_pct": None,
             "buy_hit_rate_pct": None, "sell_hit_rate_pct": None,
             "avg_return_pct": None, "avg_win_pct": None, "avg_loss_pct": None,
+            "stop_loss_count": 0, "cumulative_return_pct": None,
         }
 
     def hit_rate(calls):
@@ -161,6 +204,17 @@ def _summarize(closed_calls):
     wins = [c["return_pct"] for c in closed_calls if c["correct"] is True]
     losses = [c["return_pct"] for c in closed_calls if c["correct"] is False]
 
+    # Cumulative return: $1 into each call in the order they closed,
+    # compounding -- an illustration of whether these calls' returns build
+    # on each other or erode each other, NOT a real position-sized backtest
+    # (it doesn't account for calls that were open on different tickers at
+    # the same time the way an actual portfolio would).
+    equity = 1.0
+    for c in sorted(closed_calls, key=lambda c: c["end_ts"]):
+        if c["return_pct"] is not None:
+            equity *= (1 + c["return_pct"] / 100)
+    cumulative_return_pct = round((equity - 1) * 100, 2)
+
     return {
         "total_closed": len(closed_calls),
         "hit_rate_pct": hit_rate(closed_calls),
@@ -169,4 +223,6 @@ def _summarize(closed_calls):
         "avg_return_pct": round(sum(returns) / len(returns), 2) if returns else None,
         "avg_win_pct": round(sum(wins) / len(wins), 2) if wins else None,
         "avg_loss_pct": round(sum(losses) / len(losses), 2) if losses else None,
+        "stop_loss_count": sum(1 for c in closed_calls if c.get("close_reason") == "stop_loss"),
+        "cumulative_return_pct": cumulative_return_pct,
     }
