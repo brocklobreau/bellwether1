@@ -30,6 +30,7 @@ from lib.save_results import save_run, load_previous
 from lib.dashboard import generate_html
 from lib.sentiment import score_headline
 from lib.undervalued import prescore_value_candidate, score_undervalued, rank_value_picks
+from lib import bot as trading_bot
 
 NEWS_FEED_MAX = 15  # rolling per-ticker headline history kept across cycles
 
@@ -108,30 +109,43 @@ SCREENER_SHORTLIST_SIZE = 40  # user-chosen depth per screener per cycle
 LOW_FLOAT_REFERENCE_SHARES = 50_000_000  # "low float" reference point for the day-trade ranking boost below
 
 
-def fetch_float_lookup(pages=3):
-    """symbol -> float share count, built from a few pages of FMP's bulk
-    shares-float-all endpoint (up to 1000 symbols/page) rather than one
-    network call per candidate. Missing/failed pages just mean fewer
-    symbols get the low-float ranking boost, not a hard failure.
+FLOAT_PAGE_SIZE = 1000
+FLOAT_MAX_PAGES = 25  # safety cap: 25k symbols is well past the whole US universe
 
-    The field name FMP actually uses for the float-shares count isn't
-    documented anywhere reachable (their docs pages are JS-rendered and
-    don't show a real example response, and this sandbox has no outbound
-    network to just hit the live endpoint and look) -- so this logs the
-    raw keys of the first row once, the first time it doesn't find a
-    field it recognizes, so a live cycle's logs settle it definitively
-    instead of guessing further (added 2026-08-27)."""
+
+def fetch_float_lookup(pages=FLOAT_MAX_PAGES, page_size=FLOAT_PAGE_SIZE):
+    """symbol -> float share count, from FMP's bulk shares-float-all endpoint
+    (page_size symbols/page) rather than one network call per candidate.
+
+    Pages until a short page says the listing is exhausted, capped at `pages`.
+    That cap matters: the endpoint returns symbols in ALPHABETICAL order, so a
+    partial pull isn't a random sample of the market -- it's the front of the
+    alphabet and nothing else.
+
+    That was the actual bug behind "0 with known float" (2026-08-27/28). This
+    fetched only 3 pages = 3000 symbols, which alphabetically runs out around
+    the B's, while day-trade candidates are names like WULF, ZETA, RIOT, NCLH
+    -- all far past the cutoff, so essentially none of them could ever match.
+    It looked like a symbol-format mismatch and wasn't; the formats were
+    identical ('A', 'AA', 'AAL') and the coverage simply stopped early. The
+    first live cycle after the diagnostic logging went in made it obvious:
+    4/40 candidates matched, and the 4 were exactly the early-alphabet ones.
+    Cost of the fix is ~10 extra calls per cycle against a ~1000-call budget.
+
+    Missing/failed pages degrade gracefully -- fewer symbols get the low-float
+    ranking boost, which is a worse ranking, not a broken run."""
     lookup = {}
     logged_sample = False
+    pages_fetched = 0
     for page in range(pages):
         try:
-            rows = fmp.shares_float_all(page=page, limit=1000)
+            rows = fmp.shares_float_all(page=page, limit=page_size)
         except fmp.FMPError as e:
             log(f"shares-float-all page {page} failed: {e}")
             break
-        log(f"shares-float-all page {page}: {len(rows)} rows returned")
         if not rows:
             break
+        pages_fetched += 1
         for row in rows:
             sym = row.get("symbol")
             fs = (
@@ -144,9 +158,15 @@ def fetch_float_lookup(pages=3):
             elif not logged_sample:
                 log(f"shares-float-all: unrecognized row shape, sample keys/values: {row}")
                 logged_sample = True
+        # A short page means that was the last one -- stop rather than burning
+        # the remaining page budget on empty responses.
+        if len(rows) < page_size:
+            break
     if lookup:
-        sample = list(lookup.items())[:5]
-        log(f"shares-float-all: {len(lookup)} symbols parsed OK, sample: {sample}")
+        log(f"shares-float-all: {pages_fetched} pages fetched, {len(lookup)} symbols with float "
+            f"(alphabetical range {min(lookup)}..{max(lookup)})")
+    else:
+        log("shares-float-all: no float data resolved -- low-float boost inactive this cycle")
     return lookup
 
 
@@ -404,6 +424,27 @@ def run():
         os.makedirs(os.path.dirname(SKIP_FLAG_PATH), exist_ok=True)
         with open(SKIP_FLAG_PATH, "w") as f:
             f.write("skipped: outside market hours\n")
+
+        # Still rebuild the page from the LAST saved results before returning.
+        # No network, no new data -- purely re-running the template over
+        # results/latest.json. Without this, the served HTML is only ever
+        # regenerated at the end of a successful in-hours cycle, so any
+        # dashboard change deployed outside market hours stays invisible
+        # until the next open -- which is most of the time, and looks
+        # exactly like a broken deploy from the outside (2026-08-28: the
+        # new Hidden Gems tab shipped and didn't appear for precisely this
+        # reason). Wrapped so a template bug can never turn a harmless skip
+        # into a failed run.
+        try:
+            out_path = generate_html()
+            os.makedirs(SITE_DIR, exist_ok=True)
+            with open(out_path) as f:
+                html = f.read()
+            with open(os.path.join(SITE_DIR, "index.html"), "w") as f:
+                f.write(html)
+            log("rebuilt dashboard HTML from last saved results (no new data fetched)")
+        except Exception as e:
+            log(f"dashboard rebuild during skipped run failed (non-fatal): {e}")
         return 0
 
     started_at = write_heartbeat("started")
@@ -635,6 +676,28 @@ def run():
             "market_note": market_note,
             "day_trade_scan_note": scan_note,
         }
+
+        # --- Paper-trading bot ---
+        # Runs on this cycle's freshly-scored data and persists its own
+        # portfolio to results/bot_state.json. Wrapped so a bug in the bot
+        # can never cost us the actual data refresh -- the dashboard's core
+        # job is the scoring, and the bot is a passenger on that cycle.
+        try:
+            bot_state = trading_bot.run_cycle(payload)
+            trading_bot.save_state(bot_state)
+            payload["bot"] = trading_bot.public_snapshot(bot_state)
+            bs = payload["bot"]["summary"]
+            log(f"bot: equity ${bs['equity']:,.2f} ({bs['total_return_pct']:+.2f}%), "
+                f"{bs['open_count']} open, {bs['closed_count']} closed, "
+                f"cash ${bs['cash']:,.2f}")
+            for a in bot_state.get("actions", [])[-6:]:
+                if a.get("ts") == bot_state.get("last_run"):
+                    log(f"  bot {a['kind'].upper()} {a['ticker']} x{a.get('shares')} "
+                        f"@ ${a.get('price')} — {a.get('detail')}")
+        except Exception as e:
+            log(f"bot cycle failed (non-fatal, data refresh unaffected): {e}")
+            traceback.print_exc()
+
         save_run(payload)
         log("saved results/latest.json + history snapshot")
 
