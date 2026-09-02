@@ -129,6 +129,30 @@ def _price_loop():
         time.sleep(PRICE_TICK_SECONDS)
 
 
+def rebuild_page_on_boot():
+    """Regenerate the dashboard from the last SAVED results the moment the
+    process starts, before any refresh cycle runs.
+
+    Why this is needed: site/index.html is tracked in git, so every deploy
+    checks out whatever stale copy is in the repo and overwrites whatever the
+    server had generated. Until the next full cycle finished -- five or six
+    minutes into market hours, or not at all outside them -- the live site
+    served an old page with tabs and data that no longer matched the code.
+    results/ lives on the persistent disk and survives deploys, so the fresh
+    page can be rebuilt from it instantly with no network calls. Non-fatal:
+    if it fails, the normal cycle still regenerates the page later."""
+    try:
+        from lib.dashboard import generate_html
+        out = generate_html()
+        with open(out) as f:
+            html = f.read()
+        with open(os.path.join(SITE_DIR, "index.html"), "w") as f:
+            f.write(html)
+        log("Rebuilt dashboard from saved results on boot (deploy reset the checked-in copy).")
+    except Exception as e:
+        log(f"boot page rebuild skipped ({e}) -- the next refresh cycle will regenerate it.")
+
+
 def start_scheduler_once():
     """Guards against starting the thread twice within ONE process. This does
     NOT protect against multiple gunicorn *worker processes* each starting
@@ -145,6 +169,7 @@ def start_scheduler_once():
         threading.Thread(target=_price_loop, daemon=True).start()
 
 
+rebuild_page_on_boot()
 start_scheduler_once()
 
 if __name__ == "__main__":
