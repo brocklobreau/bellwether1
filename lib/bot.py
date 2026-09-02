@@ -68,9 +68,31 @@ INVEST_STOP_PCT = 10.0
 INVEST_TARGET_PCT = 25.0
 TRADE_STOP_PCT = 6.0          # tighter: short horizon, less room to be wrong
 TRADE_TARGET_PCT = 14.0
-TRAILING_ACTIVATE_PCT = 10.0
-TRAILING_GIVEBACK_FRAC = 1 / 3
+# --- Gain protection: a RATCHET, not a percentage giveback ---------------
+#
+# The old rule ("once up 10%, close on giving back a third of the peak") was
+# measured doing the opposite of its job. With a +25% target it made that
+# target almost unreachable: a position had to run from +10% to +25% without
+# ever retracing a third of its peak, so any ordinary pullback closed it in
+# the low teens. The backtest showed the damage precisely -- designed 2.5:1,
+# realized 1.81:1, which drags the break-even win rate from 28.6% up to
+# 35.6% against an actual 37%. Nearly the whole edge was being given away by
+# the mechanism meant to protect it.
+#
+# The replacement ratchets the STOP upward at fixed milestones instead of
+# scaling with the peak. Gains get locked in progressively, but the position
+# keeps full room to reach target, because the exit level no longer rises in
+# proportion to how well the trade is doing. (2026-09-02)
+#
+# Each entry: (gain reached, stop moves to this gain). Applied highest-first.
+RATCHET_STEPS = ((20.0, 12.0), (15.0, 7.0), (8.0, 0.0))
 SCORE_DROP_EXIT = 10.0
+
+# A thesis exit is for a position that ISN'T working. Once a trade is up
+# meaningfully, the ratcheted stop is the better instrument -- closing a
+# winner because a noisy score slipped is exactly the leakage above in
+# another form. Above this gain, only price decides.
+THESIS_EXIT_MAX_GAIN_PCT = 5.0
 MAX_TRADE_HOLD_CYCLES = 96    # ~1 day of 15-min cycles; a day trade isn't a hold
 
 # --- Thesis review: matching decision cadence to the holding horizon -----
@@ -238,6 +260,18 @@ def update_marks(pos, price, score):
     pnl = _position_pnl_pct(pos, price)
     pos["peak_pct"] = max(pos.get("peak_pct") or 0.0, pnl)
 
+    # Ratchet the stop upward through the milestones the trade has reached.
+    # Never downward -- a stop that can loosen is not a stop.
+    entry = pos.get("entry_price")
+    if entry:
+        for reached, lock_at in RATCHET_STEPS:
+            if pos["peak_pct"] >= reached:
+                new_stop = entry * (1 + lock_at / 100.0)
+                if new_stop > pos.get("stop_price", 0):
+                    pos["stop_price"] = round(new_stop, 4)
+                    pos["stop_locked_at_pct"] = lock_at
+                break
+
     if score is None:
         return
     prev = pos.get("score_ema")
@@ -262,13 +296,13 @@ def check_exit(pos, price, signal, ts):
     pnl = _position_pnl_pct(pos, price)
 
     # --- Hard exits: price risk, checked every cycle, no delay ---
-    if price <= pos["stop_price"]:
-        return "stop"
     if price >= pos["target_price"]:
         return "target"
-    peak = pos.get("peak_pct") or 0.0
-    if peak >= TRAILING_ACTIVATE_PCT and pnl <= peak * (1 - TRAILING_GIVEBACK_FRAC):
-        return "trailing"
+    if price <= pos["stop_price"]:
+        # Distinguish a real loss from a ratcheted stop that banked a gain --
+        # they are completely different events and lumping them together
+        # would make the exit statistics meaningless.
+        return "trailing" if pos.get("stop_locked_at_pct") is not None else "stop"
 
     if pos["strategy"] == "TRADE":
         # A day trade that has quietly become a long-term hold is a failed
@@ -278,6 +312,15 @@ def check_exit(pos, price, signal, ts):
         return None
 
     # --- Thesis review: at most once per calendar day ---
+    # Skipped entirely while the trade is working. A position up 12% with a
+    # ratcheted stop underneath it does not need a thesis opinion; letting a
+    # drifting score close it is the same leak that capped realized R:R at
+    # 1.81 against a designed 2.5.
+    if pnl > THESIS_EXIT_MAX_GAIN_PCT:
+        pos["thesis_strikes"] = 0
+        pos["thesis_kind"] = None
+        return None
+
     day = (ts or "")[:10]
     if not day or pos.get("last_review_day") == day:
         return None
