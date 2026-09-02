@@ -741,12 +741,41 @@ def run():
         try:
             from scripts import backtest as bt
             stale = True
+            reason = "no cached result"
             if os.path.exists(bt.RESULT_PATH):
                 age_days = (datetime.now(timezone.utc)
                             - datetime.fromtimestamp(os.path.getmtime(bt.RESULT_PATH),
                                                      tz=timezone.utc)).days
                 stale = age_days >= 7
+                reason = f"cached result is {age_days}d old"
+                # Age alone is not enough: changing an exit rule makes a
+                # cached result describe a strategy that no longer exists,
+                # and comparing the new bot against the old backtest would
+                # be quietly wrong. Re-run whenever the rules differ.
+                if not stale:
+                    try:
+                        with open(bt.RESULT_PATH) as f:
+                            cached_cfg = (json.load(f) or {}).get("config") or {}
+                        live_cfg = {
+                            "ratchet_steps": [list(x) for x in bt.RATCHET_STEPS],
+                            "thesis_exit_max_gain_pct": bt.THESIS_EXIT_MAX_GAIN_PCT,
+                            "stop_pct": bt.INVEST_STOP_PCT,
+                            "target_pct": bt.INVEST_TARGET_PCT,
+                            "cost_per_side_pct": bt.COST_PER_SIDE_PCT,
+                            "risk_per_trade_pct": bt.RISK_PER_TRADE_PCT,
+                        }
+                        for k, v in live_cfg.items():
+                            cv = cached_cfg.get(k)
+                            if k == "ratchet_steps" and cv is not None:
+                                cv = [list(x) for x in cv]
+                            if cv != v:
+                                stale = True
+                                reason = f"exit rules changed ({k}: {cv} -> {v})"
+                                break
+                    except Exception:
+                        stale, reason = True, "cached result unreadable"
             if stale:
+                log(f"backtest: re-running -- {reason}")
                 log("backtest: running 1-year risk-engine backtest (once weekly)...")
                 res = bt.run_and_save(days=365)
                 log(f"backtest: {res['total_return_pct']:+.2f}% vs buy-hold "
