@@ -110,10 +110,16 @@ LOW_FLOAT_REFERENCE_SHARES = 50_000_000  # "low float" reference point for the d
 
 
 FLOAT_PAGE_SIZE = 1000
-FLOAT_MAX_PAGES = 25  # safety cap: 25k symbols is well past the whole US universe
+# 25 pages (25k symbols) was NOT enough: the live range stopped at "PPZRX",
+# so every candidate from Q to Z still had no float data. The listing is not
+# just US common stock -- it carries funds, foreign lines and share classes
+# (the first row is a Morningstar fund id), so the universe is far larger
+# than the ~10k US tickers I sized this for. Raised, and paired with the
+# early-exit below so a bigger cap costs nothing on a normal cycle.
+FLOAT_MAX_PAGES = 60
 
 
-def fetch_float_lookup(pages=FLOAT_MAX_PAGES, page_size=FLOAT_PAGE_SIZE):
+def fetch_float_lookup(pages=FLOAT_MAX_PAGES, page_size=FLOAT_PAGE_SIZE, needed=None):
     """symbol -> float share count, from FMP's bulk shares-float-all endpoint
     (page_size symbols/page) rather than one network call per candidate.
 
@@ -134,9 +140,11 @@ def fetch_float_lookup(pages=FLOAT_MAX_PAGES, page_size=FLOAT_PAGE_SIZE):
 
     Missing/failed pages degrade gracefully -- fewer symbols get the low-float
     ranking boost, which is a worse ranking, not a broken run."""
+    want = set(needed) if needed else None
     lookup = {}
     logged_sample = False
     pages_fetched = 0
+    stopped_early = False
     for page in range(pages):
         try:
             rows = fmp.shares_float_all(page=page, limit=page_size)
@@ -158,13 +166,26 @@ def fetch_float_lookup(pages=FLOAT_MAX_PAGES, page_size=FLOAT_PAGE_SIZE):
             elif not logged_sample:
                 log(f"shares-float-all: unrecognized row shape, sample keys/values: {row}")
                 logged_sample = True
+        # Stop as soon as every candidate we actually care about has been
+        # found. Most cycles this ends the scan long before the page cap,
+        # so raising that cap costs nothing except on the rare cycle whose
+        # candidates run to the end of the alphabet.
+        if want and want.issubset(lookup.keys()):
+            stopped_early = True
+            break
         # A short page means that was the last one -- stop rather than burning
         # the remaining page budget on empty responses.
         if len(rows) < page_size:
             break
     if lookup:
+        covered = f", {len(want & lookup.keys())}/{len(want)} candidates covered" if want else ""
         log(f"shares-float-all: {pages_fetched} pages fetched, {len(lookup)} symbols with float "
-            f"(alphabetical range {min(lookup)}..{max(lookup)})")
+            f"(alphabetical range {min(lookup)}..{max(lookup)}){covered}"
+            f"{' — stopped early, all candidates found' if stopped_early else ''}")
+        if want and not want.issubset(lookup.keys()):
+            missing = sorted(want - lookup.keys())
+            log(f"shares-float-all: {len(missing)} candidate(s) still without float data "
+                f"(page cap reached before their part of the alphabet): {missing[:10]}")
     else:
         log("shares-float-all: no float data resolved -- low-float boost inactive this cycle")
     return lookup
@@ -629,7 +650,7 @@ def run():
         already_tracked = set(watchlist) | {r["ticker"] for r in screener_results}
         raw_pool = {s: row for s, row in candidates.items() if s not in already_tracked}
         log(f"day-trade raw_pool sample symbols: {list(raw_pool.keys())[:10]}")
-        float_lookup = fetch_float_lookup()
+        float_lookup = fetch_float_lookup(needed=raw_pool.keys())
         scan_pool = rank_day_trade_candidates(raw_pool, float_lookup)
         log(f"day-trade scan pool: {len(raw_pool)} candidates pulled, {len(scan_pool)} shortlisted "
             f"({sum(1 for s in scan_pool if s in float_lookup)} with known float)")
