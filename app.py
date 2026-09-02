@@ -14,6 +14,7 @@ Run locally with: python3 app.py
 Deployed on Render with: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
 (exactly one worker -- see the note above start_scheduler_once() for why)
 """
+import json
 import os
 import sys
 import threading
@@ -26,11 +27,14 @@ sys.path.insert(0, BASE)
 
 from flask import Flask, send_from_directory
 
-from scripts.refresh import run as refresh_run, log
+from scripts.refresh import run as refresh_run, log, within_market_hours
+from lib import price_ticker
+from scripts import fmp_client as fmp_module
 
 app = Flask(__name__, static_folder=None)
 
 SITE_DIR = os.path.join(BASE, "site")
+PRICE_TICK_SECONDS = 30   # display-only quote refresh; see lib/price_ticker.py
 REFRESH_INTERVAL_SECONDS = 15 * 60  # bumped from 30 min -- plan's rate limit is
                                      # 300 calls/min, not a daily cap, and cycles
                                      # never overlap (see the sleep below), so this
@@ -60,12 +64,34 @@ def static_files(path):
     return send_from_directory(SITE_DIR, path)
 
 
+@app.route("/api/prices")
+def api_prices():
+    """Small JSON the dashboard polls every 30s so quotes stay live without
+    regenerating the whole page. Cache headers off -- a cached price tick is
+    a stale price tick, which is worse than none."""
+    data = price_ticker.load_prices()
+    resp = app.response_class(json.dumps(data), mimetype="application/json")
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp
+
+
 @app.route("/healthz")
 def healthz():
     """Cheap liveness check -- also what you'd point an external uptime
     monitor at if you want a heads-up beyond the results/heartbeat.json
-    file whenever a refresh cycle fails outright."""
-    return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
+    file whenever a refresh cycle fails outright. Also reports how many
+    results/history/ snapshots are actually on disk right now (added
+    2026-08-25 to verify the persistent disk survives redeploys instead of
+    guessing from the rendered dashboard)."""
+    from lib.track_record import build_track_record
+    tr = build_track_record()
+    return {
+        "status": "ok",
+        "time": datetime.now(timezone.utc).isoformat(),
+        "history_snapshot_count": tr.get("snapshot_count"),
+        "history_first_snapshot_at": tr.get("first_snapshot_at"),
+        "history_latest_snapshot_at": tr.get("latest_snapshot_at"),
+    }
 
 
 def _scheduler_loop():
@@ -84,6 +110,25 @@ def _scheduler_loop():
         time.sleep(REFRESH_INTERVAL_SECONDS)
 
 
+def _price_loop():
+    """Quotes only, every PRICE_TICK_SECONDS during market hours. Kept in its
+    own thread so a slow full refresh never delays a price tick and a failing
+    tick never touches the refresh cycle. Errors are swallowed per-iteration
+    on purpose: prices going stale for 30 seconds is a cosmetic problem, and
+    it must never be able to take the process down."""
+    log(f"Price ticker started -- quotes every {PRICE_TICK_SECONDS}s during market hours "
+        f"(display only; never drives the bot or scoring).")
+    while True:
+        try:
+            if within_market_hours():
+                res = price_ticker.tick(fmp_module)
+                if res is None:
+                    price_ticker.write_prices({}, note="no tracked symbols yet")
+        except Exception as e:
+            log(f"price tick failed (non-fatal): {e}")
+        time.sleep(PRICE_TICK_SECONDS)
+
+
 def start_scheduler_once():
     """Guards against starting the thread twice within ONE process. This does
     NOT protect against multiple gunicorn *worker processes* each starting
@@ -97,6 +142,7 @@ def start_scheduler_once():
             return
         _scheduler_started = True
         threading.Thread(target=_scheduler_loop, daemon=True).start()
+        threading.Thread(target=_price_loop, daemon=True).start()
 
 
 start_scheduler_once()
