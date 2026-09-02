@@ -64,7 +64,7 @@ from lib.indicators import score_technical
 from lib.bot import (
     size_position, STARTING_EQUITY, RISK_PER_TRADE_PCT, MAX_POSITIONS,
     MAX_PER_SECTOR, INVEST_STOP_PCT, INVEST_TARGET_PCT,
-    TRAILING_ACTIVATE_PCT, TRAILING_GIVEBACK_FRAC, SCORE_DROP_EXIT,
+    RATCHET_STEPS, SCORE_DROP_EXIT, THESIS_EXIT_MAX_GAIN_PCT,
 )
 
 RESULT_PATH = os.path.join(BASE, "results", "backtest.json")
@@ -127,17 +127,32 @@ def fetch_history(symbol, start, end):
 
 def _exit_reason(pos, price, tech_score):
     """Identical rule set to lib.bot.check_exit, expressed against a daily
-    bar. The thesis check is daily here by construction -- which is exactly
-    the cadence the live bot settled on, so the two agree."""
+    bar -- including the ratcheted stop and the rule that a working trade is
+    governed by price, not by thesis drift. Kept in lockstep deliberately:
+    a backtest that tests different rules than the live bot is worthless."""
     entry = pos["entry_price"]
     pnl = (price - entry) / entry * 100.0
-    if price <= pos["stop"]:
-        return "stop"
+    pos["peak_pct"] = max(pos.get("peak_pct", 0.0), pnl)
+
+    # Ratchet the stop upward through whatever milestones have been reached.
+    for reached, lock_at in RATCHET_STEPS:
+        if pos["peak_pct"] >= reached:
+            new_stop = entry * (1 + lock_at / 100.0)
+            if new_stop > pos["stop"]:
+                pos["stop"] = new_stop
+                pos["stop_locked"] = True
+            break
+
     if price >= pos["target"]:
         return "target"
-    peak = pos["peak_pct"]
-    if peak >= TRAILING_ACTIVATE_PCT and pnl <= peak * (1 - TRAILING_GIVEBACK_FRAC):
-        return "trailing"
+    if price <= pos["stop"]:
+        return "trailing" if pos.get("stop_locked") else "stop"
+
+    # A trade that is working is left to price alone.
+    if pnl > THESIS_EXIT_MAX_GAIN_PCT:
+        pos["decay_streak"] = 0
+        return None
+
     if (pos["entry_tech"] is not None and tech_score is not None
             and tech_score <= pos["entry_tech"] - SCORE_DROP_EXIT):
         pos["decay_streak"] = pos.get("decay_streak", 0) + 1
@@ -265,7 +280,7 @@ def run_backtest(days=365, stop_pct=None, target_pct=None, universe=None,
             cash -= shares * fill
             positions[sym] = {
                 "shares": shares, "entry_price": fill, "entry_date": day,
-                "stop": stop, "target": fill * (1 + target_pct / 100.0),
+                "stop": stop, "target": fill * (1 + target_pct / 100.0), "stop_locked": False,
                 "peak_pct": 0.0, "entry_tech": tscore, "last": price, "decay_streak": 0,
             }
             sector_counts[sec] = sector_counts.get(sec, 0) + 1
@@ -318,7 +333,9 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    "risk_per_trade_pct": RISK_PER_TRADE_PCT,
                    "max_positions": MAX_POSITIONS, "starting_equity": STARTING_EQUITY,
                    "target_rr": round(target_pct / stop_pct, 2),
-                   "cost_per_side_pct": COST_PER_SIDE_PCT},
+                   "cost_per_side_pct": COST_PER_SIDE_PCT,
+                   "ratchet_steps": list(RATCHET_STEPS),
+                   "thesis_exit_max_gain_pct": THESIS_EXIT_MAX_GAIN_PCT},
         "final_equity": round(final, 2),
         "total_return_pct": total_return,
         "benchmark_buy_hold_pct": benchmark_pct,
