@@ -214,7 +214,7 @@ def row(r, rank):
         <div class="company">{esc(r.get('name',''))}</div>
         {insider_badge(r)}
       </td>
-      <td class="price-cell">{'$' + format(price, ',.2f') if price is not None else '—'}</td>
+      <td class="price-cell" data-live-price="{esc(r.get('ticker'))}">{'$' + format(price, ',.2f') if price is not None else '—'}</td>
       <td class="signal-cell">
         <span class="pill" style="--pill-color:{st['color']}">{st['icon']} {st['label']}</span>
         {flag}
@@ -422,8 +422,9 @@ def bot_tab_html(botdata):
             <div class="company">{esc(p.get('name') or '')}</div></td>
         <td><span class="pill" style="--pill-color:{strat_color};font-size:10px;">{esc(strat)}</span></td>
         <td class="price-cell">{p.get('shares'):,} @ ${p.get('entry_price'):,.2f}</td>
-        <td class="price-cell">${(p.get('last_price') or 0):,.2f}</td>
-        <td class="price-cell {cls}">{pct(p.get('unrealized_pct'))}<br>
+        <td class="price-cell" data-live-price="{esc(p.get('ticker'))}">${(p.get('last_price') or 0):,.2f}</td>
+        <td class="price-cell {cls}" data-live-pnl="{esc(p.get('ticker'))}"
+            data-entry="{p.get('entry_price')}" data-shares="{p.get('shares')}">{pct(p.get('unrealized_pct'))}<br>
             <span style="font-size:10.5px;opacity:0.75">${p.get('unrealized_dollars'):+,.0f}</span></td>
         <td class="price-cell" style="font-size:11px;">
             <span style="color:var(--critical)">${p.get('stop_price'):,.2f}</span> /
@@ -2242,6 +2243,10 @@ def generate_html(payload=None):
           <span class="countdown-label">Next refresh</span>
           <span class="countdown-value" id="refresh-countdown-value">—</span>
         </div>
+        <div class="countdown" id="price-tick">
+          <span class="countdown-label">Prices</span>
+          <span class="countdown-value" id="price-tick-value">—</span>
+        </div>
         <div>{len(results)} tracked · {len(discovered)} screened</div>
         <div>{len(screener)} screener picks</div>
       </div>
@@ -2347,6 +2352,84 @@ def generate_html(payload=None):
 
 </div>
 <script>
+
+  // --- Live price polling --------------------------------------------------
+  // Updates only the numbers, never the page. The heavy dashboard (scores,
+  // screeners, rationale) is regenerated server-side every 15 minutes; this
+  // keeps quotes and open-position P&L current in between at the cost of one
+  // small JSON fetch. If the endpoint is missing or the market is shut, it
+  // fails quiet and leaves the server-rendered values alone.
+  (function() {{
+    var out = document.getElementById('price-tick-value');
+    var wrap = document.getElementById('price-tick');
+    if (!out) return;
+    var TICK_MS = 30000;
+
+    function money(v) {{
+      return '$' + v.toLocaleString('en-US', {{minimumFractionDigits: 2, maximumFractionDigits: 2}});
+    }}
+    function ago(iso) {{
+      var s = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 1000));
+      if (s < 60) return s + 's ago';
+      var m = Math.floor(s / 60);
+      return m < 60 ? m + 'm ago' : Math.floor(m / 60) + 'h ago';
+    }}
+    function flash(el, up) {{
+      el.style.transition = 'none';
+      el.style.color = up ? 'var(--good)' : 'var(--critical)';
+      setTimeout(function() {{ el.style.transition = 'color 1.2s'; el.style.color = ''; }}, 60);
+    }}
+
+    function apply(data) {{
+      var prices = (data && data.prices) || {{}};
+      var n = 0;
+      document.querySelectorAll('[data-live-price]').forEach(function(el) {{
+        var p = prices[el.getAttribute('data-live-price')];
+        if (!p || p.price == null) return;
+        var next = money(p.price);
+        if (el.textContent.trim() !== next) {{
+          var prev = parseFloat(el.textContent.replace(/[^0-9.\-]/g, ''));
+          el.textContent = next;
+          if (!isNaN(prev)) flash(el, p.price >= prev);
+        }}
+        n++;
+      }});
+      // Recompute open-position P&L from the live price rather than waiting
+      // for the next full cycle -- otherwise the price column moves and the
+      // P&L beside it stays stale, which looks broken and misleads.
+      document.querySelectorAll('[data-live-pnl]').forEach(function(el) {{
+        var p = prices[el.getAttribute('data-live-pnl')];
+        var entry = parseFloat(el.getAttribute('data-entry'));
+        var shares = parseFloat(el.getAttribute('data-shares'));
+        if (!p || p.price == null || !entry || !shares) return;
+        var pctv = (p.price - entry) / entry * 100;
+        var dollars = (p.price - entry) * shares;
+        el.classList.toggle('pnl-good', pctv >= 0);
+        el.classList.toggle('pnl-bad', pctv < 0);
+        el.innerHTML = (pctv >= 0 ? '+' : '') + pctv.toFixed(2) + '%<br>' +
+          '<span style="font-size:10.5px;opacity:0.75">' +
+          (dollars >= 0 ? '+$' : '-$') +
+          Math.abs(dollars).toLocaleString('en-US', {{maximumFractionDigits: 0}}) + '</span>';
+      }});
+      if (data && data.updated_at && n) {{
+        wrap.className = 'countdown';
+        out.textContent = ago(data.updated_at);
+      }} else {{
+        wrap.className = 'countdown is-closed';
+        out.textContent = 'idle';
+      }}
+    }}
+
+    function poll() {{
+      fetch('/api/prices', {{cache: 'no-store'}})
+        .then(function(r) {{ return r.ok ? r.json() : null; }})
+        .then(function(d) {{ if (d) apply(d); }})
+        .catch(function() {{ /* offline or endpoint absent: keep rendered values */ }});
+    }}
+    poll();
+    setInterval(poll, TICK_MS);
+  }})();
+
   // --- Next-refresh countdown -------------------------------------------
   // Market state is computed HERE rather than trusted from the page data.
   // Outside market hours the server skips its work, so generated_at can be
