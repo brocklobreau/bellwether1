@@ -2388,7 +2388,7 @@ def generate_html(payload=None):
         if (!p || p.price == null) return;
         var next = money(p.price);
         if (el.textContent.trim() !== next) {{
-          var prev = parseFloat(el.textContent.replace(/[^0-9.\-]/g, ''));
+          var prev = parseFloat(el.textContent.replace(/[^0-9.\\-]/g, ''));
           el.textContent = next;
           if (!isNaN(prev)) flash(el, p.price >= prev);
         }}
