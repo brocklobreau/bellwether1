@@ -1,16 +1,16 @@
 """
-One-year walk-forward backtest of the bot's RISK ENGINE.
+Two-year walk-forward backtest of the bot's RISK ENGINE.
 
 WHAT THIS TESTS, AND WHAT IT DOES NOT
 =====================================
 
 It tests: the exit framework (stop / target / trailing / deterioration), the
-1%-risk position sizing, and the portfolio caps -- against a year of real
-daily prices, benchmarked against equal-weight buy-and-hold of the same
+1%-risk position sizing, and the portfolio caps -- against two years of
+real daily prices, benchmarked against equal-weight buy-and-hold of the same
 universe over the same window.
 
 It does NOT test the live bot's entry signal, and its result is NOT "where
-the bot would be after a year". The live bot enters on `composite_score`,
+the bot would be after two years". The live bot enters on `composite_score`,
 which blends fundamentals, analyst consensus and news sentiment. None of
 those can be reconstructed for a past date on this data plan -- FMP returns
 only CURRENT ratios, targets and ratings. Backtesting with today's
@@ -39,15 +39,25 @@ worse than no backtest:
     comparison stays fair rather than quietly favouring the strategy.
   * DAILY RESOLUTION. Stops are checked against daily closes, not intraday.
     A real stop would often fill worse (gap-downs) and occasionally better.
-  * ONE PERIOD, ONE REGIME. A single year is a single sample. A strategy
-    that wins in this window can lose in the next.
+  * FEW PERIODS. Two years is two samples, split per calendar year in
+    the output so a single strong stretch cannot masquerade as a
+    durable edge. It is better evidence than one year and still far
+    from proof: a strategy that wins in this window can lose in the
+    next, and neither year here contains a sustained bear market.
+  * COMPOUNDING IS ON. Risk is 1% of CURRENT equity, recomputed every
+    day, so position sizes grow as the account grows and shrink after
+    losses. That cuts both ways -- it accelerates gains and deepens
+    drawdowns -- and it is why the two-year figure is not simply the
+    one-year figure doubled.
 
 Point-in-time discipline is enforced structurally: the walk-forward loop
 slices `closes[:i+1]` and every indicator is computed from that slice only,
 so future data is not merely "not used" -- it is not reachable.
 
-Run via the /run-backtest endpoint on the deployed service (this needs
-network access to FMP, which the dev sandbox does not have).
+Runs automatically from scripts/refresh.py on the deployed service, which
+has the FMP network access the dev sandbox lacks. The cached result is
+re-run whenever the exit rules change, so it can never describe a strategy
+that is no longer live.
 """
 import json
 import os
@@ -163,7 +173,7 @@ def _exit_reason(pos, price, tech_score):
     return None
 
 
-def load_series(days=365, universe=None, fetch=None, verbose=True):
+def load_series(days=730, universe=None, fetch=None, verbose=True):
     """Fetch every ticker's history ONCE. Split out from run_backtest so the
     sensitivity sweep reuses one download instead of re-pulling the whole
     universe per variant (7 variants x 43 tickers = 300 needless API calls)."""
@@ -186,7 +196,7 @@ def load_series(days=365, universe=None, fetch=None, verbose=True):
     return series, sectors
 
 
-def run_backtest(days=365, stop_pct=None, target_pct=None, universe=None,
+def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  fetch=None, verbose=True, series=None, sectors=None):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
@@ -325,9 +335,37 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
     for t in closed:
         reasons[t["reason"]] = reasons.get(t["reason"], 0) + 1
 
+    # Per-calendar-year breakdown. A single headline number over two years
+    # can be one strong stretch carrying a flat one, and that distinction
+    # decides whether the edge looks repeatable or like a lucky window --
+    # so split it out rather than let the aggregate hide it.
+    by_year = {}
+    for pt in curve:
+        by_year.setdefault(pt["date"][:4], []).append(pt["equity"])
+    yearly = []
+    for yr in sorted(by_year):
+        pts = by_year[yr]
+        start_eq, end_eq = pts[0], pts[-1]
+        pk, dd = start_eq, 0.0
+        for e in pts:
+            pk = max(pk, e)
+            dd = min(dd, (e / pk - 1) * 100)
+        yr_trades = [t for t in closed if (t.get("exit_date") or "")[:4] == yr]
+        yr_wins = [t for t in yr_trades if t["pnl_pct"] > 0]
+        yearly.append({
+            "year": yr,
+            "return_pct": round((end_eq / start_eq - 1) * 100, 2),
+            "start_equity": round(start_eq, 2), "end_equity": round(end_eq, 2),
+            "max_drawdown_pct": round(dd, 2),
+            "trades": len(yr_trades),
+            "hit_rate_pct": round(100 * len(yr_wins) / len(yr_trades), 1) if yr_trades else None,
+            "sessions": len(pts),
+        })
+
     held = [t["held_days"] for t in closed]
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "yearly": yearly,
         "window": {"from": first_day, "to": last_day, "universe_size": universe_size},
         "config": {"stop_pct": stop_pct, "target_pct": target_pct,
                    "risk_per_trade_pct": RISK_PER_TRADE_PCT,
@@ -356,7 +394,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
     }
 
 
-def run_and_save(days=365, sweep=True, universe=None, fetch=None):
+def run_and_save(days=730, sweep=True, universe=None, fetch=None):
     """Main entry point. Also runs a small stop/target sensitivity sweep --
     a single parameter set that looks good is usually luck; a whole
     neighbourhood that looks good is closer to a real effect.
@@ -388,7 +426,7 @@ def run_and_save(days=365, sweep=True, universe=None, fetch=None):
 
 
 if __name__ == "__main__":
-    n = int(sys.argv[1]) if len(sys.argv) > 1 else 365
+    n = int(sys.argv[1]) if len(sys.argv) > 1 else 730
     res = run_and_save(days=n)
     print(json.dumps({k: v for k, v in res.items()
                       if k not in ("equity_curve", "trades")}, indent=2))
