@@ -571,6 +571,34 @@ def backtest_tab_html(bt):
     reason_html = " · ".join(f"<b>{v}</b> {esc(k.replace('_', ' '))}" for k, v in
                              sorted(reasons.items(), key=lambda x: -x[1])) or "—"
 
+    yearly = bt.get("yearly") or []
+    yearly_html = ""
+    if len(yearly) > 1:
+        yrows = "".join(
+            f"<tr><td class='mono'><b>{esc(y.get('year'))}</b></td>"
+            f"<td class='price-cell {'pnl-good' if (y.get('return_pct') or 0) >= 0 else 'pnl-bad'}'>"
+            f"{pct(y.get('return_pct'))}</td>"
+            f"<td class='price-cell mono'>${y.get('start_equity'):,.0f} &rarr; ${y.get('end_equity'):,.0f}</td>"
+            f"<td class='price-cell'>{pct(y.get('max_drawdown_pct'))}</td>"
+            f"<td class='price-cell mono'>{y.get('trades')}</td>"
+            f"<td class='price-cell mono'>{y.get('hit_rate_pct')}%</td></tr>"
+            for y in yearly)
+        yearly_html = f"""
+    <section>
+      <h2 class="section-title">Year by year</h2>
+      <p class="tab-blurb">The headline number is the whole window compounded. This splits it, because one
+        strong stretch carrying a flat one looks identical in aggregate to a steady edge &mdash; and only the
+        second is worth trusting. Equity carries across years: gains are reinvested, so position sizes grow
+        with the account.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Year</th><th>Return</th><th>Equity</th><th>Max DD</th>
+            <th>Trades</th><th>Win rate</th></tr></thead>
+          <tbody>{yrows}</tbody>
+        </table>
+      </div>
+    </section>"""
+
     sens = bt.get("sensitivity") or []
     HILITE = ' style="background:var(--surface-2)"'
     sens_parts = []
@@ -651,6 +679,8 @@ def backtest_tab_html(bt):
         Sized at {cfg.get('risk_per_trade_pct')}% risk per trade from ${cfg.get('starting_equity', 0):,.0f},
         max {cfg.get('max_positions')} positions.</p>
     </section>
+
+    {yearly_html}
 
     <section>
       <h2 class="section-title">Parameter sensitivity</h2>
