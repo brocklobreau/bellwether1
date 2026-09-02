@@ -424,7 +424,8 @@ def bot_tab_html(botdata):
         <td class="price-cell">{p.get('shares'):,} @ ${p.get('entry_price'):,.2f}</td>
         <td class="price-cell" data-live-price="{esc(p.get('ticker'))}">${(p.get('last_price') or 0):,.2f}</td>
         <td class="price-cell {cls}" data-live-pnl="{esc(p.get('ticker'))}"
-            data-entry="{p.get('entry_price')}" data-shares="{p.get('shares')}">{pct(p.get('unrealized_pct'))}<br>
+            data-entry="{p.get('entry_price')}" data-shares="{p.get('shares')}"
+            data-last="{p.get('last_price') or p.get('entry_price')}">{pct(p.get('unrealized_pct'))}<br>
             <span style="font-size:10.5px;opacity:0.75">${p.get('unrealized_dollars'):+,.0f}</span></td>
         <td class="price-cell" style="font-size:11px;">
             <span style="color:var(--critical)">${p.get('stop_price'):,.2f}</span> /
@@ -487,9 +488,11 @@ def bot_tab_html(botdata):
       </div>
 
       <div class="bot-stat-grid">
-        <div class="bot-stat"><span class="bot-stat-num">${s.get('equity', 0):,.0f}</span>
+        <div class="bot-stat"><span class="bot-stat-num" id="bot-equity"
+              data-cash="{s.get('cash', 0)}" data-start="{s.get('starting_equity', 0)}"
+              >${s.get('equity', 0):,.0f}</span>
           <span class="bot-stat-label">portfolio value</span></div>
-        <div class="bot-stat"><span class="bot-stat-num {ret_tone}">{pct(ret)}</span>
+        <div class="bot-stat"><span class="bot-stat-num {ret_tone}" id="bot-return">{pct(ret)}</span>
           <span class="bot-stat-label">total return</span></div>
         <div class="bot-stat"><span class="bot-stat-num">${s.get('cash', 0):,.0f}</span>
           <span class="bot-stat-label">cash</span></div>
@@ -2411,12 +2414,44 @@ def generate_html(payload=None):
           (dollars >= 0 ? '+$' : '-$') +
           Math.abs(dollars).toLocaleString('en-US', {{maximumFractionDigits: 0}}) + '</span>';
       }});
+      recomputeBotEquity(prices);
       if (data && data.updated_at && n) {{
         wrap.className = 'countdown';
         out.textContent = ago(data.updated_at);
       }} else {{
         wrap.className = 'countdown is-closed';
         out.textContent = 'idle';
+      }}
+    }}
+
+    // Portfolio value is cash + market value of open positions. Cash only
+    // changes when the bot trades (every 15 min at most), so the browser can
+    // hold it fixed and re-mark the positions against live quotes. Without
+    // this the position prices ticked while the headline total sat still,
+    // which reads as a broken page.
+    function recomputeBotEquity(prices) {{
+      var eqEl = document.getElementById('bot-equity');
+      if (!eqEl) return;
+      var cash = parseFloat(eqEl.getAttribute('data-cash'));
+      var start = parseFloat(eqEl.getAttribute('data-start'));
+      if (isNaN(cash)) return;
+      var mv = 0;
+      document.querySelectorAll('[data-live-pnl]').forEach(function(el) {{
+        var shares = parseFloat(el.getAttribute('data-shares'));
+        var p = prices[el.getAttribute('data-live-pnl')];
+        // Fall back to the server's last mark for anything the tick missed,
+        // so one missing quote can't silently drop a position from the total.
+        var px = (p && p.price != null) ? p.price : parseFloat(el.getAttribute('data-last'));
+        if (!isNaN(shares) && !isNaN(px)) mv += shares * px;
+      }});
+      var equity = cash + mv;
+      eqEl.textContent = '$' + Math.round(equity).toLocaleString('en-US');
+      var retEl = document.getElementById('bot-return');
+      if (retEl && start > 0) {{
+        var r = (equity / start - 1) * 100;
+        retEl.textContent = (r >= 0 ? '+' : '') + r.toFixed(2) + '%';
+        retEl.classList.toggle('pnl-good', r >= 0);
+        retEl.classList.toggle('pnl-bad', r < 0);
       }}
     }}
 
