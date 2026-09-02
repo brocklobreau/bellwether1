@@ -109,6 +109,8 @@ SCREENER_SHORTLIST_SIZE = 40  # user-chosen depth per screener per cycle
 LOW_FLOAT_REFERENCE_SHARES = 50_000_000  # "low float" reference point for the day-trade ranking boost below
 
 
+BACKTEST_DAYS = 730   # 2 years; also part of the backtest cache key below
+
 FLOAT_PAGE_SIZE = 1000
 # 25 pages (25k symbols) was NOT enough: the live range stopped at "PPZRX",
 # so every candidate from Q to Z still had no float data. The listing is not
@@ -763,6 +765,12 @@ def run():
                             "target_pct": bt.INVEST_TARGET_PCT,
                             "cost_per_side_pct": bt.COST_PER_SIDE_PCT,
                             "risk_per_trade_pct": bt.RISK_PER_TRADE_PCT,
+                            # Window length must be part of this too: changing
+                            # 1yr -> 2yr changes what the result MEANS while
+                            # leaving every exit rule identical, so without it
+                            # the cache silently serves the old window (which
+                            # is exactly what happened on 2026-09-02).
+                            "days": BACKTEST_DAYS,
                         }
                         for k, v in live_cfg.items():
                             cv = cached_cfg.get(k)
@@ -776,8 +784,8 @@ def run():
                         stale, reason = True, "cached result unreadable"
             if stale:
                 log(f"backtest: re-running -- {reason}")
-                log("backtest: running 1-year risk-engine backtest (once weekly)...")
-                res = bt.run_and_save(days=365)
+                log("backtest: running 2-year risk-engine backtest (once weekly)...")
+                res = bt.run_and_save(days=BACKTEST_DAYS)
                 log(f"backtest: {res['total_return_pct']:+.2f}% vs buy-hold "
                     f"{res['benchmark_buy_hold_pct']:+.2f}% "
                     f"(excess {res['excess_vs_benchmark_pct']:+.2f}), "

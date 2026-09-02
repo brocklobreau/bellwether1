@@ -310,11 +310,11 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
     benchmark_pct = round(sum(rets) / len(rets), 2) if rets else None
 
     return _summarize(curve, closed, positions, cash, benchmark_pct,
-                      first_day, last_day, stop_pct, target_pct, len(series))
+                      first_day, last_day, stop_pct, target_pct, len(series), days=days)
 
 
 def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_day,
-               stop_pct, target_pct, universe_size):
+               stop_pct, target_pct, universe_size, days=None):
     final = curve[-1]["equity"] if curve else STARTING_EQUITY
     total_return = round((final / STARTING_EQUITY - 1) * 100, 2)
 
@@ -373,7 +373,8 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    "target_rr": round(target_pct / stop_pct, 2),
                    "cost_per_side_pct": COST_PER_SIDE_PCT,
                    "ratchet_steps": list(RATCHET_STEPS),
-                   "thesis_exit_max_gain_pct": THESIS_EXIT_MAX_GAIN_PCT},
+                   "thesis_exit_max_gain_pct": THESIS_EXIT_MAX_GAIN_PCT,
+                   "days": days},
         "final_equity": round(final, 2),
         "total_return_pct": total_return,
         "benchmark_buy_hold_pct": benchmark_pct,
