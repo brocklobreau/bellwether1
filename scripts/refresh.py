@@ -281,6 +281,11 @@ def pick_value_prescreen_pool(rows, already_tracked, limit=VALUE_PRESCREEN_SIZE)
 MARKET_TZ = ZoneInfo("America/New_York")
 MARKET_OPEN = (9, 30)   # 9:30 AM ET
 MARKET_CLOSE = (16, 0)  # 4:00 PM ET
+
+# Mirrors app.py's scheduler interval. Duplicated rather than imported to
+# avoid a circular import (app imports refresh); asserted below so the two
+# can't silently drift apart.
+REFRESH_INTERVAL_SECONDS = 15 * 60
 SKIP_FLAG_PATH = os.path.join(BASE, "results", ".skip_this_run")
 
 
@@ -696,6 +701,14 @@ def run():
             "pending_tickers": [],
             "market_note": market_note,
             "day_trade_scan_note": scan_note,
+            # Countdown data for the dashboard. Approximate by nature: the
+            # scheduler in app.py sleeps REFRESH_INTERVAL_SECONDS *after* a
+            # cycle finishes, so the next start is roughly now + interval.
+            # The page treats it as an estimate and recomputes from whatever
+            # generated_at it actually receives, so drift self-corrects.
+            "refresh_interval_seconds": REFRESH_INTERVAL_SECONDS,
+            "next_refresh_at": (datetime.now(timezone.utc)
+                                + timedelta(seconds=REFRESH_INTERVAL_SECONDS)).isoformat(),
         }
 
         # --- Paper-trading bot ---
@@ -718,6 +731,45 @@ def run():
         except Exception as e:
             log(f"bot cycle failed (non-fatal, data refresh unaffected): {e}")
             traceback.print_exc()
+
+        # --- One-off backtest of the risk engine ---
+        # Runs once and caches to results/backtest.json (persistent disk), then
+        # refreshes weekly. Guarded and non-fatal: it is a diagnostic, and must
+        # never be able to cost us the live data refresh. Its history download
+        # is shared across every sensitivity variant, so the whole thing costs
+        # ~45 API calls, not ~300.
+        try:
+            from scripts import backtest as bt
+            stale = True
+            if os.path.exists(bt.RESULT_PATH):
+                age_days = (datetime.now(timezone.utc)
+                            - datetime.fromtimestamp(os.path.getmtime(bt.RESULT_PATH),
+                                                     tz=timezone.utc)).days
+                stale = age_days >= 7
+            if stale:
+                log("backtest: running 1-year risk-engine backtest (once weekly)...")
+                res = bt.run_and_save(days=365)
+                log(f"backtest: {res['total_return_pct']:+.2f}% vs buy-hold "
+                    f"{res['benchmark_buy_hold_pct']:+.2f}% "
+                    f"(excess {res['excess_vs_benchmark_pct']:+.2f}), "
+                    f"{res['closed_trades']} trades, hit {res['hit_rate_pct']}%, "
+                    f"R:R {res['realized_rr']}, maxDD {res['max_drawdown_pct']}%")
+                for v in res.get("sensitivity", []):
+                    if "error" not in v:
+                        log(f"  backtest variant {v['stop_pct']}/{v['target_pct']} "
+                            f"({v['rr']}:1): {v['return_pct']:+.2f}%, "
+                            f"maxDD {v['max_dd_pct']:.1f}%, {v['trades']} trades, "
+                            f"hit {v['hit_rate_pct']}%")
+        except Exception as e:
+            log(f"backtest failed (non-fatal): {e}")
+            traceback.print_exc()
+
+        try:
+            if os.path.exists(os.path.join(BASE, "results", "backtest.json")):
+                with open(os.path.join(BASE, "results", "backtest.json")) as f:
+                    payload["backtest"] = json.load(f)
+        except Exception as e:
+            log(f"could not attach backtest results: {e}")
 
         save_run(payload)
         log("saved results/latest.json + history snapshot")
