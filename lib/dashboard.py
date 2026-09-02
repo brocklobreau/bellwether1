@@ -545,6 +545,141 @@ def bot_tab_html(botdata):
     </section>"""
 
 
+def backtest_tab_html(bt):
+    """The backtest panel. Deliberately its own tab, and deliberately loud
+    about its limits: a page showing an equity curve next to the live bot's
+    equity curve invites confusing a simulation with a track record, and the
+    two are not remotely the same kind of evidence."""
+    if not bt:
+        return """
+    <section>
+      <h2 class="section-title">Backtest</h2>
+      <div class="empty-note">No backtest has been run yet. It executes automatically on the next
+        market-hours refresh cycle (then re-runs weekly) and takes a couple of minutes.</div>
+    </section>"""
+
+    cfg = bt.get("config") or {}
+    win = bt.get("window") or {}
+    ret = bt.get("total_return_pct")
+    bench = bt.get("benchmark_buy_hold_pct")
+    excess = bt.get("excess_vs_benchmark_pct")
+    beat = (excess or 0) > 0
+
+    chart = equity_curve_svg(bt.get("equity_curve"), cfg.get("starting_equity") or 100000)
+
+    reasons = bt.get("exit_reasons") or {}
+    reason_html = " · ".join(f"<b>{v}</b> {esc(k.replace('_', ' '))}" for k, v in
+                             sorted(reasons.items(), key=lambda x: -x[1])) or "—"
+
+    sens = bt.get("sensitivity") or []
+    HILITE = ' style="background:var(--surface-2)"'
+    sens_parts = []
+    for v in sens:
+        if "error" in v:
+            continue
+        live = (v.get("stop_pct") == cfg.get("stop_pct")
+                and v.get("target_pct") == cfg.get("target_pct"))
+        ret_cls = "pnl-good" if (v.get("return_pct") or 0) >= 0 else "pnl-bad"
+        exp_cls = "pnl-good" if (v.get("expectancy_pct") or 0) >= 0 else "pnl-bad"
+        sens_parts.append(
+            f"<tr{HILITE if live else ''}>"
+            f"<td class='mono'>{v.get('stop_pct')}% / {v.get('target_pct')}%"
+            f"{' &larr; live' if live else ''}</td>"
+            f"<td class='mono'>{v.get('rr')}:1</td>"
+            f"<td class='price-cell {ret_cls}'>{pct(v.get('return_pct'))}</td>"
+            f"<td class='price-cell'>{pct(v.get('max_dd_pct'))}</td>"
+            f"<td class='price-cell mono'>{v.get('trades')}</td>"
+            f"<td class='price-cell mono'>{v.get('hit_rate_pct')}%</td>"
+            f"<td class='price-cell {exp_cls}'>{pct(v.get('expectancy_pct'))}</td></tr>")
+    sens_rows = "".join(sens_parts) or \
+        '<tr><td colspan="7" class="empty-cell">Sensitivity sweep unavailable.</td></tr>'
+
+    trades = bt.get("trades") or []
+    trade_rows = "".join(
+        f"<tr><td class='ticker-cell'><div class='ticker'>{esc(t.get('ticker'))}</div>"
+        f"<div class='company'>{esc(t.get('sector') or '')}</div></td>"
+        f"<td><span class='pill' style=\"--pill-color:{'var(--good)' if t.get('reason') in ('target','trailing') else ('var(--critical)' if t.get('reason')=='stop' else 'var(--warning)')};font-size:10px;\">{esc((t.get('reason') or '').replace('_',' '))}</span></td>"
+        f"<td class='price-cell'>${t.get('entry_price'):,.2f}</td>"
+        f"<td class='price-cell'>${t.get('exit_price'):,.2f}</td>"
+        f"<td class='price-cell {'pnl-good' if (t.get('pnl_pct') or 0) >= 0 else 'pnl-bad'}'>{pct(t.get('pnl_pct'))}</td>"
+        f"<td class='price-cell {'pnl-good' if (t.get('pnl_dollars') or 0) >= 0 else 'pnl-bad'}'>${t.get('pnl_dollars'):+,.0f}</td>"
+        f"<td class='price-cell mono' style='font-size:11px;color:var(--ink-faint)'>{t.get('held_days')}d</td></tr>"
+        for t in trades[:40]
+    ) or '<tr><td colspan="7" class="empty-cell">No trades.</td></tr>'
+
+    return f"""
+    <section>
+      <h2 class="section-title">Backtest — risk engine</h2>
+
+      <div class="bot-disclaimer" style="border-left-color:var(--critical)">
+        <b>This is a simulation, not the bot's track record.</b> It tests the <b>exit rules and position
+        sizing</b> over {esc(win.get('from') or '')} → {esc(win.get('to') or '')} on
+        {win.get('universe_size')} real tickers — <b>not</b> the live bot's entry signal. Entries here use
+        technicals only, because fundamentals, analyst targets and news sentiment cannot be reconstructed
+        for past dates; using today's values against last year's prices would be lookahead bias and would
+        make any result meaningless. Also: survivorship bias (only tickers that still exist today), no
+        commissions or slippage, stops checked against daily closes rather than intraday, and one year is
+        one sample of one market regime. Treat it as evidence about the <b>risk framework</b>, nothing more.
+      </div>
+
+      <div class="bot-stat-grid">
+        <div class="bot-stat"><span class="bot-stat-num">${bt.get('final_equity', 0):,.0f}</span>
+          <span class="bot-stat-label">ending equity</span></div>
+        <div class="bot-stat"><span class="bot-stat-num {'pnl-good' if (ret or 0) >= 0 else 'pnl-bad'}">{pct(ret)}</span>
+          <span class="bot-stat-label">strategy return</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{pct(bench)}</span>
+          <span class="bot-stat-label">buy &amp; hold</span></div>
+        <div class="bot-stat"><span class="bot-stat-num {'pnl-good' if beat else 'pnl-bad'}">{pct(excess)}</span>
+          <span class="bot-stat-label">vs benchmark</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{pct(bt.get('max_drawdown_pct'))}</span>
+          <span class="bot-stat-label">max drawdown</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{bt.get('hit_rate_pct')}%</span>
+          <span class="bot-stat-label">win rate</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{f"{bt.get('realized_rr')}:1" if bt.get('realized_rr') else '—'}</span>
+          <span class="bot-stat-label">realized R:R</span></div>
+        <div class="bot-stat"><span class="bot-stat-num {'pnl-good' if (bt.get('expectancy_pct') or 0) >= 0 else 'pnl-bad'}">{pct(bt.get('expectancy_pct'))}</span>
+          <span class="bot-stat-label">expectancy/trade</span></div>
+      </div>
+
+      {chart}
+
+      <p class="tab-blurb">
+        <b>{'Beat' if beat else 'Did not beat'} buy-and-hold by {abs(excess or 0):.1f} points.</b>
+        {bt.get('closed_trades')} closed trades, average hold {bt.get('avg_hold_days')} days,
+        average win {pct(bt.get('avg_win_pct'))} against average loss {pct(bt.get('avg_loss_pct'))}.
+        Exits: {reason_html}.
+        Sized at {cfg.get('risk_per_trade_pct')}% risk per trade from ${cfg.get('starting_equity', 0):,.0f},
+        max {cfg.get('max_positions')} positions.</p>
+    </section>
+
+    <section>
+      <h2 class="section-title">Parameter sensitivity</h2>
+      <p class="tab-blurb">The same year re-run at different stop/target settings. This matters more than the
+        headline number: one parameter set that looks good is usually luck, whereas a whole neighbourhood
+        that looks good is closer to a real effect. If only the highlighted row works, the result is fitted
+        to this particular year and should not be trusted.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Stop / target</th><th>R:R</th><th>Return</th><th>Max DD</th>
+            <th>Trades</th><th>Win rate</th><th>Expectancy</th></tr></thead>
+          <tbody>{sens_rows}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Simulated trades</h2>
+      <p class="tab-blurb">Most recent {min(len(trades), 40)} of {bt.get('closed_trades')} closed positions.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th></th><th>Closed by</th><th>Entry</th><th>Exit</th><th>Return</th>
+            <th>P&amp;L</th><th>Held</th></tr></thead>
+          <tbody>{trade_rows}</tbody>
+        </table>
+      </div>
+    </section>"""
+
+
 def risk_reward_panel(summary):
     """The risk/reward scoreboard -- the honest answer to "is this actually
     making money". Leads with EXPECTANCY rather than hit rate, because hit
@@ -1211,6 +1346,7 @@ def generate_html(payload=None):
     value_rejected = payload.get("value_rejected", [])
     value_scan_note = payload.get("value_scan_note", "")
     botdata = payload.get("bot")
+    backtestdata = payload.get("backtest")
     pending = payload.get("pending_tickers", [])
     generated_at = payload.get("generated_at")
     market_note = payload.get("market_note", "")
@@ -1264,6 +1400,7 @@ def generate_html(payload=None):
 
     value_html = value_tab_html(value_picks, value_rejected, value_scan_note)
     bot_html = bot_tab_html(botdata)
+    backtest_html = backtest_tab_html(backtestdata)
 
     buy_count = sum(1 for r in results if r.get("signal") == "BUY")
     sell_count = sum(1 for r in results if r.get("signal") == "SELL")
@@ -1438,6 +1575,15 @@ def generate_html(payload=None):
     align-items: center;
     gap: 6px;
   }}
+  .countdown {{
+    display: flex; align-items: baseline; gap: 6px; margin-top: 4px;
+  }}
+  .countdown-label {{ color: var(--ink-faint); }}
+  .countdown-value {{
+    color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600;
+  }}
+  .countdown.is-running .countdown-value {{ color: var(--accent); }}
+  .countdown.is-closed .countdown-value {{ color: var(--ink-muted); font-weight: 400; }}
   .live-dot {{
     width: 6px;
     height: 6px;
@@ -2054,12 +2200,18 @@ def generate_html(payload=None):
         <button class="nav-btn" data-tab="investing" role="tab" aria-selected="false">Investing</button>
         <button class="nav-btn" data-tab="gems" role="tab" aria-selected="false">Hidden Gems</button>
         <button class="nav-btn" data-tab="bot" role="tab" aria-selected="false">Trading Bot</button>
+        <button class="nav-btn" data-tab="backtest" role="tab" aria-selected="false">Backtest</button>
         <button class="nav-btn" data-tab="portfolio" role="tab" aria-selected="false">Portfolio</button>
         <button class="nav-btn" data-tab="trackrecord" role="tab" aria-selected="false">Track Record</button>
       </nav>
 
       <div class="sidebar-status">
         <div class="updated"><span class="live-dot"></span>Updated {esc(updated_str)}</div>
+        <div class="countdown" id="refresh-countdown" data-next="{esc(payload.get('next_refresh_at') or '')}"
+             data-interval="{payload.get('refresh_interval_seconds') or 900}">
+          <span class="countdown-label">Next refresh</span>
+          <span class="countdown-value" id="refresh-countdown-value">—</span>
+        </div>
         <div>{len(results)} tracked · {len(discovered)} screened</div>
         <div>{len(screener)} screener picks</div>
       </div>
@@ -2139,6 +2291,10 @@ def generate_html(payload=None):
         {bot_html}
       </div>
 
+      <div class="tab-panel" data-panel="backtest">
+        {backtest_html}
+      </div>
+
       <div class="tab-panel" data-panel="portfolio">
         <section id="portfolio-tab-root">
           {portfolio_html}
@@ -2161,6 +2317,122 @@ def generate_html(payload=None):
 
 </div>
 <script>
+  // --- Next-refresh countdown -------------------------------------------
+  // Market state is computed HERE rather than trusted from the page data.
+  // Outside market hours the server skips its work, so generated_at can be
+  // hours or days stale -- a countdown driven purely by that timestamp
+  // would sit at zero all weekend claiming a refresh was overdue. Working
+  // it out client-side keeps the display honest whatever the page's age.
+  (function() {{
+    var el = document.getElementById('refresh-countdown');
+    var out = document.getElementById('refresh-countdown-value');
+    if (!el || !out) return;
+
+    var interval = (parseInt(el.getAttribute('data-interval'), 10) || 900) * 1000;
+    var nextAt = Date.parse(el.getAttribute('data-next') || '') || 0;
+    // A refresh cycle takes a few minutes; the page only changes once it
+    // finishes, so reloading the instant the countdown hits zero would just
+    // re-fetch the same page. Wait for the run to plausibly complete.
+    var CYCLE_MS = 6 * 60 * 1000;
+    var reloaded = false;
+
+    function etParts(d) {{
+      var f = new Intl.DateTimeFormat('en-US', {{
+        timeZone: 'America/New_York', hour12: false,
+        weekday: 'short', hour: '2-digit', minute: '2-digit'
+      }});
+      var p = {{}};
+      f.formatToParts(d).forEach(function(x) {{ p[x.type] = x.value; }});
+      return p;
+    }}
+
+    var DAYS = {{Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6}};
+
+    function marketState(now) {{
+      var p = etParts(now);
+      var dow = DAYS[p.weekday];
+      var mins = parseInt(p.hour, 10) * 60 + parseInt(p.minute, 10);
+      var open = 9 * 60 + 30, close = 16 * 60;
+      if (dow >= 1 && dow <= 5 && mins >= open && mins < close) {{
+        return {{open: true}};
+      }}
+      // Minutes until the next weekday 9:30 ET, in ET wall-clock terms.
+      var wait;
+      if (dow >= 1 && dow <= 5 && mins < open) {{
+        wait = open - mins;
+      }} else {{
+        var d = dow, add = 0;
+        do {{ add += 1; d = (d + 1) % 7; }} while (d === 0 || d === 6);
+        wait = (1440 - mins) + (add - 1) * 1440 + open;
+      }}
+      return {{open: false, minsToOpen: wait}};
+    }}
+
+    function fmt(ms) {{
+      if (ms < 0) ms = 0;
+      var s = Math.floor(ms / 1000);
+      var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      if (h > 0) return h + 'h ' + String(m).padStart(2, '0') + 'm';
+      return m + ':' + String(sec).padStart(2, '0');
+    }}
+
+    function tick() {{
+      var now = Date.now();
+      var st = marketState(new Date(now));
+
+      if (!st.open) {{
+        el.className = 'countdown is-closed';
+        el.querySelector('.countdown-label').textContent = 'Market opens in';
+        out.textContent = fmt(st.minsToOpen * 60 * 1000);
+        return;
+      }}
+
+      // Market is open.
+      // If the anchor is badly out of date the server's actual schedule is
+      // unknowable from here -- rolling a days-old timestamp forward in
+      // 15-minute steps produces a confident-looking number with nothing
+      // behind it. Say the data is stale instead, which is the true and
+      // more useful statement, and reload once in case the server has since
+      // published something newer.
+      var age = nextAt ? (now - nextAt) : 0;
+      if (!nextAt || age > 3 * interval) {{
+        el.className = 'countdown is-closed';
+        el.querySelector('.countdown-label').textContent = 'Data stale';
+        out.textContent = nextAt ? fmt(age) + ' old' : 'unknown';
+        if (!reloaded && nextAt) {{
+          reloaded = true;
+          setTimeout(function() {{ location.reload(); }}, 5000);
+        }}
+        return;
+      }}
+
+      // Only a cycle or two behind -- the phase is still meaningful, so
+      // roll forward to the next scheduled slot.
+      var target = nextAt;
+      while (target + CYCLE_MS < now) target += interval;
+
+      var remaining = target - now;
+      if (remaining > 0) {{
+        el.className = 'countdown';
+        el.querySelector('.countdown-label').textContent = 'Next refresh';
+        out.textContent = fmt(remaining);
+      }} else {{
+        el.className = 'countdown is-running';
+        el.querySelector('.countdown-label').textContent = 'Refreshing';
+        out.textContent = 'now…';
+        // Once the cycle has had time to finish, pull the new page in. Guarded
+        // so this can only ever happen once per page load.
+        if (!reloaded && now > target + CYCLE_MS) {{
+          reloaded = true;
+          setTimeout(function() {{ location.reload(); }}, 3000);
+        }}
+      }}
+    }}
+
+    tick();
+    setInterval(tick, 1000);
+  }})();
+
   (function() {{
     var buttons = document.querySelectorAll('.nav-btn');
     var panels = document.querySelectorAll('.tab-panel');
