@@ -18,6 +18,7 @@ let that surface rather than silently substituting guessed data.
 """
 import collections
 import os
+import threading
 import time
 import requests
 
@@ -31,17 +32,30 @@ MAX_RETRIES = 3
 # a 300-calls/min plan limit instead of finding the ceiling by tripping it.
 RATE_LIMIT_PER_MIN = 250
 _call_times = collections.deque()
+# The refresh cycle and the 30-second price ticker now call this from two
+# different threads. deque append/popleft are individually atomic, but the
+# read-decide-append sequence below is not -- without the lock both threads
+# can look at the same under-limit count and both append, so the effective
+# limit drifts above the cap exactly when traffic is heaviest. (2026-09-02)
+_throttle_lock = threading.Lock()
 
 
 def _throttle():
-    now = time.time()
-    while _call_times and now - _call_times[0] > 60:
-        _call_times.popleft()
-    if len(_call_times) >= RATE_LIMIT_PER_MIN:
-        sleep_for = 60 - (now - _call_times[0]) + 0.1
-        if sleep_for > 0:
-            time.sleep(sleep_for)
-    _call_times.append(time.time())
+    with _throttle_lock:
+        now = time.time()
+        while _call_times and now - _call_times[0] > 60:
+            _call_times.popleft()
+        if len(_call_times) >= RATE_LIMIT_PER_MIN:
+            sleep_for = 60 - (now - _call_times[0]) + 0.1
+        else:
+            sleep_for = 0
+        if sleep_for <= 0:
+            _call_times.append(time.time())
+    # Sleep OUTSIDE the lock so a throttled caller doesn't block every other
+    # thread for the whole wait, then re-enter to claim its slot.
+    if sleep_for > 0:
+        time.sleep(sleep_for)
+        _throttle()
 
 
 class FMPError(RuntimeError):
@@ -181,3 +195,37 @@ def shares_float_all(page=0, limit=1000):
     at a time (added 2026-08-27 for the low-float day-trade screener)."""
     data = _get("shares-float-all", {"page": page, "limit": limit})
     return data if isinstance(data, list) else []
+
+
+def batch_quote_short(symbols):
+    """Light quotes for many symbols in ONE call -- symbol/price/change/volume.
+    This is what makes a 30-second price tick affordable: ~45 tracked symbols
+    cost one request instead of forty-five, so the ticker adds ~2 calls/min
+    against a 250/min budget instead of ~90.
+
+    Falls back through the fuller batch endpoint and finally to per-symbol
+    quotes, so an unexpected parameter name degrades into something slower
+    rather than into no prices at all."""
+    if not symbols:
+        return []
+    joined = ",".join(sorted(set(symbols)))
+    for path, params in (
+        ("batch-quote-short", {"symbols": joined}),
+        ("batch-quote", {"symbols": joined}),
+    ):
+        try:
+            data = _get(path, params)
+            if isinstance(data, list) and data:
+                return data
+        except FMPError:
+            continue
+    out = []
+    for sym in sorted(set(symbols)):
+        try:
+            q = quote(sym)
+            if q.get("price") is not None:
+                out.append({"symbol": sym, "price": q.get("price"),
+                            "change": q.get("change"), "volume": q.get("volume")})
+        except FMPError:
+            continue
+    return out
