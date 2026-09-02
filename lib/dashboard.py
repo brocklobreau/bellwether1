@@ -7,7 +7,10 @@ import os
 from datetime import datetime, timezone
 
 from lib.portfolio import load_portfolio, compute_portfolio
-from lib.track_record import build_track_record, STOP_LOSS_PCT
+from lib.track_record import (
+    build_track_record, STOP_LOSS_PCT, TAKE_PROFIT_PCT,
+    TRAILING_ACTIVATE_PCT, SCORE_DROP_EXIT,
+)
 from lib.day_trade_track_record import build_day_trade_track_record
 from lib.day_trade_momentum import build_momentum
 from lib.sectors import get_sector, sector_breakdown
@@ -341,6 +344,258 @@ def value_card(r):
       <div class="value-facts">{esc(facts_str)}</div>
       <ul class="rationale value-notes">{notes_html}</ul>
       <div class="pick-buy">Buy zone: {buy_str}</div>
+    </div>"""
+
+
+def equity_curve_svg(curve, start_equity, width=760, height=140):
+    """Inline SVG sparkline of the bot's equity. No chart library -- this
+    page is a single self-contained file and stays that way. Draws the
+    starting-equity line so above/below the line is readable at a glance."""
+    pts = [p.get("equity") for p in (curve or []) if p.get("equity") is not None]
+    if len(pts) < 2:
+        return ('<div class="empty-note">Not enough history to plot yet — the curve appears '
+                'once the bot has run a few cycles.</div>')
+
+    lo, hi = min(pts + [start_equity]), max(pts + [start_equity])
+    span = (hi - lo) or 1.0
+    pad = span * 0.08
+    lo, hi = lo - pad, hi + pad
+    span = hi - lo
+
+    def x(i): return round(i / (len(pts) - 1) * width, 2)
+    def y(v): return round(height - (v - lo) / span * height, 2)
+
+    line = " ".join(f"{x(i)},{y(v)}" for i, v in enumerate(pts))
+    area = f"0,{height} " + line + f" {width},{height}"
+    base_y = y(start_equity)
+    up = pts[-1] >= start_equity
+    stroke = "var(--good)" if up else "var(--critical)"
+
+    return f"""<div class="equity-chart">
+      <svg viewBox="0 0 {width} {height}" preserveAspectRatio="none" role="img"
+           aria-label="Bot equity curve">
+        <polygon points="{area}" fill="{stroke}" opacity="0.10"/>
+        <line x1="0" y1="{base_y}" x2="{width}" y2="{base_y}"
+              stroke="var(--ink-faint)" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+        <polyline points="{line}" fill="none" stroke="{stroke}" stroke-width="2"
+                  stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+      <div class="equity-axis">
+        <span>${lo:,.0f}</span>
+        <span class="equity-axis-mid">dashed line = ${start_equity:,.0f} starting equity</span>
+        <span>${hi:,.0f}</span>
+      </div>
+    </div>"""
+
+
+def bot_tab_html(botdata):
+    """The paper-trading bot panel: what it holds, what it did, and whether
+    it's actually working. Leads with the disclaimer because a page showing
+    an equity curve and buy/sell logs looks exactly like a real brokerage
+    account, and it is not one."""
+    if not botdata:
+        return ('<section><h2 class="section-title">Trading bot</h2>'
+                '<div class="empty-note">The bot hasn\'t run yet — it starts on the next '
+                'refresh cycle during market hours.</div></section>')
+
+    s = botdata.get("summary") or {}
+    cfg = botdata.get("config") or {}
+    positions = botdata.get("positions") or []
+    closed = botdata.get("closed_trades") or []
+    actions = botdata.get("actions") or []
+
+    ret = s.get("total_return_pct")
+    ret_tone = "pnl-good" if (ret or 0) >= 0 else "pnl-bad"
+    exp = s.get("expectancy_pct")
+
+    chart = equity_curve_svg(botdata.get("equity_curve"), s.get("starting_equity") or 100000)
+
+    def pos_row(p):
+        up = (p.get("unrealized_pct") or 0) >= 0
+        cls = "pnl-good" if up else "pnl-bad"
+        why = "; ".join((p.get("entry_reasons") or [])[:3])
+        strat = p.get("strategy", "")
+        strat_color = "var(--accent)" if strat == "INVEST" else "var(--good)"
+        return f"""
+      <tr>
+        <td class="ticker-cell"><div class="ticker">{esc(p.get('ticker'))}</div>
+            <div class="company">{esc(p.get('name') or '')}</div></td>
+        <td><span class="pill" style="--pill-color:{strat_color};font-size:10px;">{esc(strat)}</span></td>
+        <td class="price-cell">{p.get('shares'):,} @ ${p.get('entry_price'):,.2f}</td>
+        <td class="price-cell">${(p.get('last_price') or 0):,.2f}</td>
+        <td class="price-cell {cls}">{pct(p.get('unrealized_pct'))}<br>
+            <span style="font-size:10.5px;opacity:0.75">${p.get('unrealized_dollars'):+,.0f}</span></td>
+        <td class="price-cell" style="font-size:11px;">
+            <span style="color:var(--critical)">${p.get('stop_price'):,.2f}</span> /
+            <span style="color:var(--good)">${p.get('target_price'):,.2f}</span><br>
+            <span style="font-size:10px;color:var(--ink-faint)">{p.get('entry_rr')}:1 · risk ${p.get('risk_dollars'):,.0f}</span></td>
+        <td style="font-size:11px;color:var(--ink-muted);max-width:34ch;">{esc(why)}</td>
+      </tr>"""
+
+    def closed_row(t):
+        cls = "pnl-good" if t.get("win") else "pnl-bad"
+        tone = {"target hit": "var(--good)", "trailing stop": "var(--good)",
+                "stop-loss": "var(--critical)", "signal faded": "var(--warning)",
+                "signal reversed": "var(--warning)", "held too long": "var(--ink-muted)"}.get(
+                    t.get("exit_label"), "var(--ink-muted)")
+        return f"""
+      <tr>
+        <td class="ticker-cell"><div class="ticker">{esc(t.get('ticker'))}</div>
+            <div class="company">{esc(t.get('strategy'))}</div></td>
+        <td><span class="pill" style="--pill-color:{tone};font-size:10px;">{esc(t.get('exit_label'))}</span></td>
+        <td class="price-cell">${t.get('entry_price'):,.2f}</td>
+        <td class="price-cell">${t.get('exit_price'):,.2f}</td>
+        <td class="price-cell {cls}">{pct(t.get('pnl_pct'))}</td>
+        <td class="price-cell {cls}">${t.get('pnl_dollars'):+,.0f}</td>
+        <td class="price-cell" style="font-size:11px;color:var(--ink-faint);white-space:nowrap;">
+            {esc((t.get('entry_ts') or '')[:10])} → {esc((t.get('exit_ts') or '')[:10])}</td>
+      </tr>"""
+
+    pos_html = ("".join(pos_row(p) for p in positions) or
+                '<tr><td colspan="7" class="empty-cell">No open positions — nothing currently clears the entry gates.</td></tr>')
+    closed_html = ("".join(closed_row(t) for t in closed[:40]) or
+                   '<tr><td colspan="7" class="empty-cell">No closed trades yet.</td></tr>')
+
+    action_items = "".join(
+        f'<li><span class="act-{esc(a.get("kind"))}">{esc((a.get("kind") or "").upper())}</span> '
+        f'<b>{esc(a.get("ticker"))}</b> ×{a.get("shares")} @ ${a.get("price"):,.2f} — '
+        f'{esc(a.get("detail"))} <span class="act-ts">{esc((a.get("ts") or "")[:16].replace("T", " "))}</span></li>'
+        for a in actions[:15] if a.get("kind") in ("buy", "sell")
+    ) or '<li class="act-none">No trades yet.</li>'
+
+    verdict = ""
+    n_closed = s.get("closed_count") or 0
+    if n_closed:
+        good = s.get("profitable")
+        verdict = (f"<b>{'Positive' if good else 'Negative'} expectancy</b> at "
+                   f"{s.get('expectancy_pct'):+.2f}% per trade over {n_closed} closed "
+                   f"trade{'s' if n_closed != 1 else ''}")
+        verdict += f", realized reward:risk {s.get('realized_rr')}:1." if s.get("realized_rr") else "."
+        if n_closed < 30:
+            verdict += " Far too few trades to mean anything yet."
+
+    return f"""
+    <section>
+      <h2 class="section-title">Trading bot</h2>
+      <div class="bot-disclaimer"><b>Paper trading — simulated money.</b> No brokerage is connected and no
+        order is ever placed. It started with ${s.get('starting_equity', 0):,.0f} of pretend capital and marks
+        itself to market each cycle. It is also <b>forward-tested, not backtested</b>: every decision is made
+        from the data available at that moment and written down immediately, so nothing here is fitted after
+        the fact — but that also means it has to earn its record in real time, and a handful of trades proves
+        nothing either way.</p>
+      </div>
+
+      <div class="bot-stat-grid">
+        <div class="bot-stat"><span class="bot-stat-num">${s.get('equity', 0):,.0f}</span>
+          <span class="bot-stat-label">portfolio value</span></div>
+        <div class="bot-stat"><span class="bot-stat-num {ret_tone}">{pct(ret)}</span>
+          <span class="bot-stat-label">total return</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">${s.get('cash', 0):,.0f}</span>
+          <span class="bot-stat-label">cash</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{s.get('max_drawdown_pct', 0):.1f}%</span>
+          <span class="bot-stat-label">max drawdown</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{f"{s.get('hit_rate_pct'):.0f}%" if s.get('hit_rate_pct') is not None else '—'}</span>
+          <span class="bot-stat-label">win rate</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{f"{s.get('realized_rr')}:1" if s.get('realized_rr') else '—'}</span>
+          <span class="bot-stat-label">realized R:R</span></div>
+        <div class="bot-stat"><span class="bot-stat-num {'pnl-good' if (exp or 0) > 0 else ('pnl-bad' if exp is not None else '')}">{pct(exp)}</span>
+          <span class="bot-stat-label">expectancy/trade</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{s.get('open_count', 0)} / {s.get('closed_count', 0)}</span>
+          <span class="bot-stat-label">open / closed</span></div>
+      </div>
+
+      {chart}
+      {f'<p class="tab-blurb">{verdict}</p>' if verdict else ''}
+
+      <p class="tab-blurb">How it decides: a position opens only if it clears the score gate
+        <b>and</b> offers at least <b>{cfg.get('min_entry_rr')}:1</b> reward-to-risk. Size is set so that being
+        stopped out costs exactly <b>{cfg.get('risk_per_trade_pct')}% of equity</b> — a wider stop buys fewer
+        shares, so every position loses the same amount when it's wrong. Capped at
+        {cfg.get('max_positions')} positions and {cfg.get('max_per_sector')} per sector. Candidates are ranked
+        by reward:risk, not by score: given two acceptable setups it takes the one that pays more for the same
+        risk.</p>
+    </section>
+
+    <section>
+      <h2 class="section-title">Open positions</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th></th><th>Type</th><th>Bought</th><th>Now</th><th>Unrealized</th>
+            <th>Stop / target</th><th>Why it bought</th></tr></thead>
+          <tbody>{pos_html}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Recent activity</h2>
+      <ul class="bot-actions">{action_items}</ul>
+    </section>
+
+    <section>
+      <h2 class="section-title">Closed trades</h2>
+      <p class="tab-blurb">Every completed trade, wins and losses alike, with the exit rule that ended it.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th></th><th>Closed by</th><th>Entry</th><th>Exit</th><th>Return</th>
+            <th>P&amp;L</th><th>Held</th></tr></thead>
+          <tbody>{closed_html}</tbody>
+        </table>
+      </div>
+    </section>"""
+
+
+def risk_reward_panel(summary):
+    """The risk/reward scoreboard -- the honest answer to "is this actually
+    making money". Leads with EXPECTANCY rather than hit rate, because hit
+    rate on its own says nothing: 60% right with small wins and big losses
+    loses money, 35% right at 2.5:1 makes it. Shows the breakeven hit rate
+    the current reward:risk implies, and how far above or below it you are."""
+    target_rr = summary.get("target_rr")
+    realized_rr = summary.get("realized_rr")
+    exp = summary.get("expectancy_pct")
+    be = summary.get("breakeven_hit_rate_pct")
+    edge = summary.get("edge_vs_breakeven_pct")
+    hit = summary.get("hit_rate_pct")
+    n = summary.get("total_closed") or 0
+
+    if n == 0:
+        return (f'<div class="rr-panel"><div class="rr-headline">Configured for '
+                f'<b>{target_rr}:1</b> reward:risk</div>'
+                f'<p class="rr-note">Targeting +{TAKE_PROFIT_PCT:.0f}% against a −{STOP_LOSS_PCT:.0f}% stop. '
+                f'At that ratio the break-even hit rate is <b>{be}%</b> — everything above that is profit. '
+                f'No calls have closed yet, so there is nothing measured to show.</p></div>')
+
+    exp_tone = "good" if (exp or 0) > 0 else "bad"
+    edge_tone = "good" if (edge or 0) > 0 else "bad"
+    verdict = ("Positive expectancy — this is making money on the math."
+               if (exp or 0) > 0 else
+               "Negative expectancy — as graded, this loses money over time.")
+
+    return f"""<div class="rr-panel">
+      <div class="rr-grid">
+        <div class="rr-cell">
+          <span class="rr-num rr-{exp_tone}">{exp:+.2f}%</span>
+          <span class="rr-label">expectancy per call</span>
+        </div>
+        <div class="rr-cell">
+          <span class="rr-num">{f'{realized_rr}:1' if realized_rr else '—'}</span>
+          <span class="rr-label">realized reward:risk</span>
+        </div>
+        <div class="rr-cell">
+          <span class="rr-num">{f'{hit:.0f}%' if hit is not None else '—'}
+            <span class="rr-vs">vs {be}% needed</span></span>
+          <span class="rr-label">hit rate vs break-even</span>
+        </div>
+        <div class="rr-cell">
+          <span class="rr-num rr-{edge_tone}">{f'{edge:+.1f}' if edge is not None else '—'} pts</span>
+          <span class="rr-label">edge over break-even</span>
+        </div>
+      </div>
+      <p class="rr-note"><b>{esc(verdict)}</b> Expectancy is what one average call is worth, and it is the
+        only number that settles the question — hit rate alone can't, since being right 60% of the time with
+        small wins and large losses still loses. At the configured {target_rr}:1 target you only need to be
+        right <b>{be}%</b> of the time. Measured over {n} closed call{'s' if n != 1 else ''}.</p>
     </div>"""
 
 
@@ -702,10 +957,15 @@ def track_record_tab_html():
         start_date = (c.get("start_ts") or "")[:10]
         end_date = (c.get("end_ts") or "")[:10]
         reason = c.get("close_reason")
-        reason_badge = (
-            ' <span class="pill" style="--pill-color:var(--critical);font-size:10px;">stop-loss</span>'
-            if reason == "stop_loss" else ""
-        )
+        reason_badge = ""
+        if reason and reason != "reversal":
+            # Colour by what the exit means for you, not by which rule fired:
+            # a booked gain reads green, a cut loss red, a faded thesis amber.
+            tone = {"take_profit": "var(--good)", "trailing_stop": "var(--good)",
+                    "stop_loss": "var(--critical)", "score_drop": "var(--warning)"}.get(reason, "var(--ink-muted)")
+            label = c.get("close_reason_label") or reason
+            reason_badge = (f' <span class="pill" style="--pill-color:{tone};font-size:10px;">'
+                            f'{esc(label)}</span>')
         return f"""
       <tr>
         <td class="ticker-cell"><div class="ticker">{esc(c['ticker'])}</div><div class="company">{esc(c.get('name') or '')}</div></td>
@@ -726,14 +986,20 @@ def track_record_tab_html():
     avg_ret = summary["avg_return_pct"]
     cum_ret = summary["cumulative_return_pct"]
     stop_count = summary["stop_loss_count"]
+    rr_panel = risk_reward_panel(summary)
 
     return f"""
     <h2 class="section-title">Signal track record</h2>
     <p class="tab-blurb">Every BUY/SELL call the system has made, graded against what actually happened to the
       price afterward — a BUY is "correct" if it finished up, a SELL if it finished down. A call stays open
-      through a fade to HOLD and only closes on a real reversal (BUY→SELL or SELL→BUY) or if it moves against
-      you more than {STOP_LOSS_PCT:.0f}% first (marked "stop-loss" below) — HOLD itself isn't graded, it's not
-      a directional bet. Based on {tr['snapshot_count']} hourly snapshots since {esc(tr['first_snapshot_at'][:10])}.</p>
+      through a fade to HOLD (a single dip isn't a reversal) and closes on whichever of five exits fires first,
+      each tagged in the table below: <b>target hit</b> at {TAKE_PROFIT_PCT:.0f}%,
+      <b>trailing stop</b> once it's been up {TRAILING_ACTIVATE_PCT:.0f}%+ and gives back a third of its peak gain,
+      <b>stop-loss</b> at −{STOP_LOSS_PCT:.0f}% from entry, <b>signal faded</b> if the composite score drops
+      {SCORE_DROP_EXIT:.0f}+ points below where it opened, or a full <b>reversal</b> to the opposite signal.
+      Based on {tr['snapshot_count']} snapshots since {esc(tr['first_snapshot_at'][:10])}.</p>
+
+    {rr_panel}
 
     <div class="summary-strip">
       <div class="summary-chip"><b>{f'{hit:.0f}%' if hit is not None else '—'}</b>&nbsp;overall hit rate</div>
@@ -944,6 +1210,7 @@ def generate_html(payload=None):
     value_picks = payload.get("value_picks", [])
     value_rejected = payload.get("value_rejected", [])
     value_scan_note = payload.get("value_scan_note", "")
+    botdata = payload.get("bot")
     pending = payload.get("pending_tickers", [])
     generated_at = payload.get("generated_at")
     market_note = payload.get("market_note", "")
@@ -996,6 +1263,7 @@ def generate_html(payload=None):
     ) if checklist_pool else '<div class="empty-note">No data yet.</div>'
 
     value_html = value_tab_html(value_picks, value_rejected, value_scan_note)
+    bot_html = bot_tab_html(botdata)
 
     buy_count = sum(1 for r in results if r.get("signal") == "BUY")
     sell_count = sum(1 for r in results if r.get("signal") == "SELL")
@@ -1554,6 +1822,80 @@ def generate_html(payload=None):
     color: var(--ink-muted); font-variant-numeric: tabular-nums;
     display: flex; flex-direction: column; align-items: flex-end; text-align: right;
   }}
+
+  .bot-disclaimer {{
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-left: 3px solid var(--warning);
+    border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+    font-size: 12px; line-height: 1.55; color: var(--ink-muted); max-width: 78ch;
+  }}
+  .bot-disclaimer b {{ color: var(--ink); }}
+  .bot-stat-grid {{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px 16px; margin-bottom: 18px;
+  }}
+  .bot-stat {{ display: flex; flex-direction: column; gap: 2px; }}
+  .bot-stat-num {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 19px; font-weight: 600;
+    color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15;
+  }}
+  .bot-stat-label {{
+    font-size: 9.5px; color: var(--ink-faint); letter-spacing: 0.04em; text-transform: uppercase;
+  }}
+  .equity-chart {{
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px 8px; margin-bottom: 16px;
+  }}
+  .equity-chart svg {{ width: 100%; height: 140px; display: block; }}
+  .equity-axis {{
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 6px; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums;
+  }}
+  .equity-axis-mid {{ font-family: 'IBM Plex Sans', sans-serif; letter-spacing: 0.02em; }}
+  ul.bot-actions {{ list-style: none; padding: 0; margin: 0; font-size: 12px; }}
+  ul.bot-actions li {{
+    padding: 7px 0; border-bottom: 1px solid var(--border); color: var(--ink-muted);
+  }}
+  ul.bot-actions li:last-child {{ border-bottom: none; }}
+  .act-buy, .act-sell {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+    padding: 1px 6px; border-radius: 4px; margin-right: 6px;
+  }}
+  .act-buy {{ background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }}
+  .act-sell {{ background: color-mix(in srgb, var(--critical) 18%, transparent); color: var(--critical); }}
+  .act-ts {{ color: var(--ink-faint); font-size: 10.5px; margin-left: 4px; }}
+  .act-none {{ color: var(--ink-faint); }}
+  .rr-panel {{
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px; padding: 16px 18px; margin: 4px 0 18px;
+    box-shadow: var(--shadow);
+  }}
+  .rr-grid {{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px 18px;
+  }}
+  .rr-cell {{ display: flex; flex-direction: column; gap: 3px; }}
+  .rr-num {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 21px; font-weight: 600;
+    color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.15;
+  }}
+  .rr-num.rr-good {{ color: var(--good); }}
+  .rr-num.rr-bad {{ color: var(--critical); }}
+  .rr-vs {{
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;
+    font-weight: 400; color: var(--ink-faint); margin-left: 4px;
+  }}
+  .rr-label {{
+    font-size: 10px; color: var(--ink-faint); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }}
+  .rr-note {{
+    margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
+    font-size: 12px; line-height: 1.55; color: var(--ink-muted); max-width: 70ch;
+  }}
+  .rr-note b {{ color: var(--ink); }}
   .value-prices {{
     background: var(--surface-2); border: 1px solid var(--border);
     border-radius: 8px; padding: 9px 11px; margin-bottom: 9px;
@@ -1711,6 +2053,7 @@ def generate_html(payload=None):
         <button class="nav-btn" data-tab="daytrade" role="tab" aria-selected="false">Day Trade</button>
         <button class="nav-btn" data-tab="investing" role="tab" aria-selected="false">Investing</button>
         <button class="nav-btn" data-tab="gems" role="tab" aria-selected="false">Hidden Gems</button>
+        <button class="nav-btn" data-tab="bot" role="tab" aria-selected="false">Trading Bot</button>
         <button class="nav-btn" data-tab="portfolio" role="tab" aria-selected="false">Portfolio</button>
         <button class="nav-btn" data-tab="trackrecord" role="tab" aria-selected="false">Track Record</button>
       </nav>
@@ -1790,6 +2133,10 @@ def generate_html(payload=None):
 
       <div class="tab-panel" data-panel="gems">
         {value_html}
+      </div>
+
+      <div class="tab-panel" data-panel="bot">
+        {bot_html}
       </div>
 
       <div class="tab-panel" data-panel="portfolio">
