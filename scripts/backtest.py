@@ -216,7 +216,7 @@ def load_series(days=730, universe=None, fetch=None, verbose=True):
 
 def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  fetch=None, verbose=True, series=None, sectors=None,
-                 vol_scaled=True):
+                 vol_scaled=False):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
@@ -432,7 +432,9 @@ def run_and_save(days=730, sweep=True, universe=None, fetch=None):
 
     History is downloaded once and shared across every variant."""
     series, sectors = load_series(days=days, universe=universe, fetch=fetch)
-    out = run_backtest(days=days, series=series, sectors=sectors, vol_scaled=True)
+    # Fixed levels are the live default -- see USE_VOL_SCALED_LEVELS in
+    # lib/bot.py for the measurement that settled this.
+    out = run_backtest(days=days, series=series, sectors=sectors, vol_scaled=False)
     if sweep:
         variants = []
         for stop, target, vs in SWEEP_VARIANTS:
