@@ -75,6 +75,7 @@ from lib.bot import (
     size_position, STARTING_EQUITY, RISK_PER_TRADE_PCT, MAX_POSITIONS,
     MAX_PER_SECTOR, INVEST_STOP_PCT, INVEST_TARGET_PCT,
     RATCHET_STEPS, SCORE_DROP_EXIT, THESIS_EXIT_MAX_GAIN_PCT,
+    scaled_levels, ratchet_rungs,
 )
 
 RESULT_PATH = os.path.join(BASE, "results", "backtest.json")
@@ -120,6 +121,23 @@ TECH_ENTRY_MIN = 55.0
 # plus slippage. A strategy turning over ~160 positions a year pays this
 # ~160 times, so leaving it out would overstate returns by several points.
 COST_PER_SIDE_PCT = 0.05
+
+# (stop_pct, target_pct) combinations re-run over the same window. The last
+# three deliberately test the "take a small guaranteed win" idea: +5% against
+# the normal 10% stop, a 1:1, and the only coherent version of small targets
+# (a proportionally tight 2.5% stop). Including ideas expected to fail is the
+# point -- a sweep that only contains variants you already like tells you
+# nothing. (2026-09-02, user question)
+# (stop_pct, target_pct, vol_scaled). vol_scaled=True ignores the fixed pair
+# except as a fallback and sizes each position off that stock's own daily
+# range. Both approaches are in the same sweep on purpose: volatility scaling
+# is a well-reasoned hypothesis, not a proven improvement, and the only way
+# to know is to run it against the fixed levels on identical data.
+SWEEP_VARIANTS = (
+    (10, 25, True), (10, 25, False),          # the head-to-head that matters
+    (8, 24, False), (12, 24, False), (10, 20, False), (10, 30, False),
+    (10, 5, False), (10, 10, False), (2.5, 5, False),
+)
 LOOKBACK_52W = 252
 
 
@@ -144,8 +162,8 @@ def _exit_reason(pos, price, tech_score):
     pnl = (price - entry) / entry * 100.0
     pos["peak_pct"] = max(pos.get("peak_pct", 0.0), pnl)
 
-    # Ratchet the stop upward through whatever milestones have been reached.
-    for reached, lock_at in RATCHET_STEPS:
+    # Ratchet through rungs derived from THIS position's own target.
+    for reached, lock_at in (ratchet_rungs(pos.get("target_pct")) or RATCHET_STEPS):
         if pos["peak_pct"] >= reached:
             new_stop = entry * (1 + lock_at / 100.0)
             if new_stop > pos["stop"]:
@@ -197,7 +215,8 @@ def load_series(days=730, universe=None, fetch=None, verbose=True):
 
 
 def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
-                 fetch=None, verbose=True, series=None, sectors=None):
+                 fetch=None, verbose=True, series=None, sectors=None,
+                 vol_scaled=True):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
@@ -232,13 +251,13 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             closes = [c for _, c in h[:i + 1]]        # <= today. Future unreachable.
             window = closes[-LOOKBACK_52W:]
             tech = score_technical(closes, price_52w_low=min(window), price_52w_high=max(window))
-            today[sym] = (closes[-1], tech.get("technical_score"))
+            today[sym] = (closes[-1], tech.get("technical_score"), tech.get("volatility_pct"))
 
         # --- exits first, so freed cash is reusable the same day ---
         for sym in list(positions):
             if sym not in today:
                 continue
-            price, tscore = today[sym]
+            price, tscore = today[sym][0], today[sym][1]
             pos = positions[sym]
             pnl = (price - pos["entry_price"]) / pos["entry_price"] * 100.0
             pos["peak_pct"] = max(pos["peak_pct"], pnl)
@@ -258,7 +277,7 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                 })
                 del positions[sym]
 
-        equity = cash + sum(p["shares"] * today.get(s, (p["last"], None))[0]
+        equity = cash + sum(p["shares"] * (today[s][0] if s in today else p["last"])
                             for s, p in positions.items())
         for s, p in positions.items():
             if s in today:
@@ -270,27 +289,35 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             sector_counts[sectors[s]] = sector_counts.get(sectors[s], 0) + 1
 
         cands = []
-        for sym, (price, tscore) in today.items():
+        for sym, (price, tscore, vol) in today.items():
             if sym in positions or tscore is None or tscore < TECH_ENTRY_MIN:
                 continue
-            cands.append((tscore, sym, price))
+            cands.append((tscore, sym, price, vol))
         cands.sort(reverse=True)
 
-        for tscore, sym, price in cands:
+        for tscore, sym, price, vol in cands:
             if len(positions) >= MAX_POSITIONS:
                 break
             sec = sectors[sym]
             if sector_counts.get(sec, 0) >= MAX_PER_SECTOR:
                 continue
             fill = price * (1 + COST_PER_SIDE_PCT / 100.0)      # buys fill higher
-            stop = fill * (1 - stop_pct / 100.0)
+            # vol_scaled: size the levels to this stock's own daily range,
+            # exactly as lib.bot does live. Otherwise use the fixed pair,
+            # so the sweep can compare the two approaches head to head.
+            if vol_scaled:
+                s_pct, t_pct = scaled_levels(vol, fallback_stop=stop_pct)
+            else:
+                s_pct, t_pct = stop_pct, target_pct
+            stop = fill * (1 - s_pct / 100.0)
             shares, risk_dollars, reject = size_position(equity, cash, fill, stop)
             if reject:
                 continue
             cash -= shares * fill
             positions[sym] = {
                 "shares": shares, "entry_price": fill, "entry_date": day,
-                "stop": stop, "target": fill * (1 + target_pct / 100.0), "stop_locked": False,
+                "stop": stop, "target": fill * (1 + t_pct / 100.0), "stop_locked": False,
+                "target_pct": t_pct,
                 "peak_pct": 0.0, "entry_tech": tscore, "last": price, "decay_streak": 0,
             }
             sector_counts[sec] = sector_counts.get(sec, 0) + 1
@@ -310,11 +337,12 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
     benchmark_pct = round(sum(rets) / len(rets), 2) if rets else None
 
     return _summarize(curve, closed, positions, cash, benchmark_pct,
-                      first_day, last_day, stop_pct, target_pct, len(series), days=days)
+                      first_day, last_day, stop_pct, target_pct, len(series),
+                      days=days, vol_scaled=vol_scaled)
 
 
 def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_day,
-               stop_pct, target_pct, universe_size, days=None):
+               stop_pct, target_pct, universe_size, days=None, vol_scaled=True):
     final = curve[-1]["equity"] if curve else STARTING_EQUITY
     total_return = round((final / STARTING_EQUITY - 1) * 100, 2)
 
@@ -374,7 +402,9 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    "cost_per_side_pct": COST_PER_SIDE_PCT,
                    "ratchet_steps": list(RATCHET_STEPS),
                    "thesis_exit_max_gain_pct": THESIS_EXIT_MAX_GAIN_PCT,
-                   "days": days},
+                   "vol_scaled": vol_scaled,
+                   "days": days,
+                   "sweep_variants": [list(v) for v in SWEEP_VARIANTS]},
         "final_equity": round(final, 2),
         "total_return_pct": total_return,
         "benchmark_buy_hold_pct": benchmark_pct,
@@ -402,21 +432,24 @@ def run_and_save(days=730, sweep=True, universe=None, fetch=None):
 
     History is downloaded once and shared across every variant."""
     series, sectors = load_series(days=days, universe=universe, fetch=fetch)
-    out = run_backtest(days=days, series=series, sectors=sectors)
+    out = run_backtest(days=days, series=series, sectors=sectors, vol_scaled=True)
     if sweep:
         variants = []
-        for stop, target in ((10, 25), (8, 24), (12, 24), (10, 20), (10, 30), (6, 18)):
+        for stop, target, vs in SWEEP_VARIANTS:
             try:
                 r = run_backtest(days=days, stop_pct=stop, target_pct=target,
-                                 series=series, sectors=sectors, verbose=False)
+                                 series=series, sectors=sectors, verbose=False,
+                                 vol_scaled=vs)
                 variants.append({
-                    "stop_pct": stop, "target_pct": target, "rr": round(target / stop, 2),
+                    "stop_pct": stop, "target_pct": target, "vol_scaled": vs,
+                    "rr": round(target / stop, 2),
                     "return_pct": r["total_return_pct"], "max_dd_pct": r["max_drawdown_pct"],
                     "trades": r["closed_trades"], "hit_rate_pct": r["hit_rate_pct"],
                     "expectancy_pct": r["expectancy_pct"],
                 })
             except Exception as e:
-                variants.append({"stop_pct": stop, "target_pct": target, "error": str(e)[:120]})
+                variants.append({"stop_pct": stop, "target_pct": target, "vol_scaled": vs,
+                                 "error": str(e)[:120]})
         out["sensitivity"] = variants
     os.makedirs(os.path.dirname(RESULT_PATH), exist_ok=True)
     tmp = RESULT_PATH + ".tmp"

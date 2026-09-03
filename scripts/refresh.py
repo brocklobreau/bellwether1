@@ -771,6 +771,13 @@ def run():
                             # the cache silently serves the old window (which
                             # is exactly what happened on 2026-09-02).
                             "days": BACKTEST_DAYS,
+                            # Adding a sweep variant changes the result without
+                            # touching any exit rule, so it must be part of the
+                            # key too -- otherwise the new variants silently
+                            # never run (same trap as `days` on 2026-09-02).
+                            "sweep_variants": [list(v) for v in bt.SWEEP_VARIANTS],
+                            "vol_stop_mult": trading_bot.VOL_STOP_MULT,
+                            "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
                         for k, v in live_cfg.items():
                             cv = cached_cfg.get(k)
