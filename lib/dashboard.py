@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from lib.portfolio import load_portfolio, compute_portfolio
 from lib.track_record import (
     build_track_record, STOP_LOSS_PCT, TAKE_PROFIT_PCT,
-    TRAILING_ACTIVATE_PCT, SCORE_DROP_EXIT,
+    RATCHET_STEPS, SCORE_DROP_EXIT,
 )
 from lib.day_trade_track_record import build_day_trade_track_record
 from lib.day_trade_momentum import build_momentum
@@ -414,6 +414,13 @@ def bot_tab_html(botdata):
         up = (p.get("unrealized_pct") or 0) >= 0
         cls = "pnl-good" if up else "pnl-bad"
         why = "; ".join((p.get("entry_reasons") or [])[:3])
+        # Make the half-sizing visible. A position that is deliberately
+        # smaller looks like a bug unless the page says why it is smaller.
+        earn_badge = ""
+        if p.get("earnings_sized_down"):
+            d = p.get("days_to_earnings")
+            earn_badge = (f'<br><span class="pill" style="--pill-color:var(--warning);font-size:9.5px;">'
+                          f'half size · earnings {("in " + str(d) + "d") if d is not None else "soon"}</span>')
         strat = p.get("strategy", "")
         strat_color = "var(--accent)" if strat == "INVEST" else "var(--good)"
         return f"""
@@ -430,7 +437,8 @@ def bot_tab_html(botdata):
         <td class="price-cell" style="font-size:11px;">
             <span style="color:var(--critical)">${p.get('stop_price'):,.2f}</span> /
             <span style="color:var(--good)">${p.get('target_price'):,.2f}</span><br>
-            <span style="font-size:10px;color:var(--ink-faint)">{p.get('entry_rr')}:1 · risk ${p.get('risk_dollars'):,.0f}</span></td>
+            <span style="font-size:10px;color:var(--ink-faint)">{p.get('entry_rr')}:1 · risk ${p.get('risk_dollars'):,.0f}</span>
+            {earn_badge}</td>
         <td style="font-size:11px;color:var(--ink-muted);max-width:34ch;">{esc(why)}</td>
       </tr>"""
 
@@ -609,13 +617,19 @@ def backtest_tab_html(bt):
     for v in sens:
         if "error" in v:
             continue
-        live = (v.get("stop_pct") == cfg.get("stop_pct")
-                and v.get("target_pct") == cfg.get("target_pct"))
+        live = (bool(v.get("vol_scaled")) == bool(cfg.get("vol_scaled"))
+                and (v.get("vol_scaled")
+                     or (v.get("stop_pct") == cfg.get("stop_pct")
+                         and v.get("target_pct") == cfg.get("target_pct"))))
         ret_cls = "pnl-good" if (v.get("return_pct") or 0) >= 0 else "pnl-bad"
         exp_cls = "pnl-good" if (v.get("expectancy_pct") or 0) >= 0 else "pnl-bad"
+        # Precomputed: an f-string expression cannot contain a backslash, and
+        # a nested quoted f-string here needs one.
+        label = ("vol-scaled" if v.get("vol_scaled")
+                 else f"{v.get('stop_pct')}% / {v.get('target_pct')}%")
         sens_parts.append(
             f"<tr{HILITE if live else ''}>"
-            f"<td class='mono'>{v.get('stop_pct')}% / {v.get('target_pct')}%"
+            f"<td class='mono'>{label}"
             f"{' &larr; live' if live else ''}</td>"
             f"<td class='mono'>{v.get('rr')}:1</td>"
             f"<td class='price-cell {ret_cls}'>{pct(v.get('return_pct'))}</td>"
@@ -1156,6 +1170,9 @@ def track_record_tab_html():
     cum_ret = summary["cumulative_return_pct"]
     stop_count = summary["stop_loss_count"]
     rr_panel = risk_reward_panel(summary)
+    ratchet_desc = ", ".join(
+        f"+{r:.0f}% &rarr; stop {'breakeven' if l == 0 else f'+{l:.0f}%'}"
+        for r, l in sorted(RATCHET_STEPS))
 
     return f"""
     <h2 class="section-title">Signal track record</h2>
@@ -1163,7 +1180,7 @@ def track_record_tab_html():
       price afterward — a BUY is "correct" if it finished up, a SELL if it finished down. A call stays open
       through a fade to HOLD (a single dip isn't a reversal) and closes on whichever of five exits fires first,
       each tagged in the table below: <b>target hit</b> at {TAKE_PROFIT_PCT:.0f}%,
-      <b>trailing stop</b> once it's been up {TRAILING_ACTIVATE_PCT:.0f}%+ and gives back a third of its peak gain,
+      <b>trailing stop</b> &mdash; the stop ratchets up as the call gains ({ratchet_desc}) and closes if price falls back to it,
       <b>stop-loss</b> at −{STOP_LOSS_PCT:.0f}% from entry, <b>signal faded</b> if the composite score drops
       {SCORE_DROP_EXIT:.0f}+ points below where it opened, or a full <b>reversal</b> to the opposite signal.
       Based on {tr['snapshot_count']} snapshots since {esc(tr['first_snapshot_at'][:10])}.</p>

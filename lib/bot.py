@@ -62,12 +62,97 @@ MIN_INVEST_SCORE = 68.0       # composite score required to open an INVEST posit
 MIN_TRADE_SCORE = 70.0        # day-trade score required to open a TRADE position
 MIN_ENTRY_RR = 2.0            # reward:risk floor -- the core rule of the whole bot
 
-# --- Exits (mirror lib/track_record.py so the graded record and the bot
-#     are telling the same story rather than two different ones) ---------
+# --- Earnings gap risk ---------------------------------------------------
+#
+# Every risk number in this file assumes one thing: that the stop holds, so a
+# loser costs RISK_PER_TRADE_PCT and no more. Overnight earnings gaps are the
+# main case where that assumption is simply false -- a stop cannot fill while
+# the market is shut, it fills at whatever price the stock reopens at.
+#
+# The damage is not marginal. At the measured 32.4% win rate the system runs
+# a +3.8 point edge over its break-even; a 14% gap moves break-even to 35.9%
+# and the edge is gone, and typical single-name earnings gaps are 8-15%.
+#
+# The response is NOT to ban the trade -- a company heading into a good print
+# is a real opportunity, and refusing it forfeits that. The response is to
+# size it for the risk that is actually present. The stop stays where it is
+# (it still works intraday); SIZING pretends the stop is EARNINGS_GAP_PCT
+# away, which roughly halves the position. Same 1% of equity at risk, now
+# measured against the loss that can really happen. (2026-09-02)
+EARNINGS_WINDOW_DAYS = 5      # size down when a report is this close
+EARNINGS_GAP_PCT = 20.0       # the loss to size against, not the stop we set
+
+# --- Exits: sized to EACH STOCK, not to a single fixed percentage --------
+#
+# A flat 10%/25% is correctly calibrated for exactly one kind of stock -- a
+# ~2%-a-day mid-cap -- and mis-sized for everything else. Price wanders
+# roughly vol*sqrt(days), so the time to travel a fixed distance scales with
+# (distance/vol)^2:
+#
+#   * A 0.8%/day utility needs ~2.5 YEARS of drift to reach +25%. The target
+#     is effectively unreachable, so those positions can only ever exit by
+#     stop or thesis decay -- the reward half of the reward:risk never
+#     happens, while the risk half works perfectly. That is a strategy that
+#     only knows how to lose.
+#   * A 4.5%/day momentum name has a 10% stop sitting INSIDE its ordinary
+#     daily noise, so it gets stopped out at random and pays spread for it.
+#
+# Both levels are therefore expressed in multiples of the stock's own
+# average daily move (technical.volatility_pct, already computed by
+# lib.indicators). The RATIO is fixed by construction, so reward:risk is
+# identical for every position and only the distances change. A 2%/day
+# stock lands on -10%/+25%, i.e. exactly today's behaviour -- this
+# generalises the current setting rather than replacing it. (2026-09-02,
+# user-identified: "every stock is different")
+TARGET_RR = 2.5               # reward:risk every position is built to
+VOL_STOP_MULT = 5.0           # stop distance = this many average daily moves
+
+# Clamps matter as much as the scaling. Five daily moves on a 6%/day meme
+# stock is a 30% stop -- "only 5 vol units" is no comfort when the loss is
+# real money. And a 2% stop on a sleepy utility is inside the bid-ask noise.
+# The stop is clamped FIRST and the target derived from the clamped stop, so
+# clamping can never quietly break the reward:risk ratio.
+MIN_STOP_PCT = 4.0
+MAX_STOP_PCT = 15.0
+
+# Fallbacks for when volatility is unavailable (rare -- technicals are
+# computed even for day-trade candidates).
 INVEST_STOP_PCT = 10.0
 INVEST_TARGET_PCT = 25.0
 TRADE_STOP_PCT = 6.0          # tighter: short horizon, less room to be wrong
 TRADE_TARGET_PCT = 14.0
+
+
+def scaled_levels(volatility_pct, fallback_stop=INVEST_STOP_PCT):
+    """(stop_pct, target_pct) sized to this stock's own daily range.
+
+    Returns positive percentages. Falls back to the fixed stop when
+    volatility is missing, and always derives the target from the FINAL
+    (clamped) stop so the reward:risk ratio survives the clamps."""
+    if not volatility_pct or volatility_pct <= 0:
+        stop = fallback_stop
+    else:
+        stop = volatility_pct * VOL_STOP_MULT
+    stop = max(MIN_STOP_PCT, min(MAX_STOP_PCT, stop))
+    return round(stop, 2), round(stop * TARGET_RR, 2)
+
+
+# Ratchet rungs as FRACTIONS of the target rather than fixed percentages, so
+# gain protection scales with the trade the same way the levels do. On a 25%
+# target these land on +8.75/+15/+20 locking 0/+7.5/+12.5 -- within a rounding
+# error of the fixed rungs they replace. On an 8% day-trade target they become
+# +2.8/+4.8/+6.4, which is the real fix: under fixed rungs a short-horizon
+# trade never reached even the first one and ran with no gain protection at
+# all. (fraction of target reached, fraction of target locked in)
+RATCHET_FRACTIONS = ((0.80, 0.50), (0.60, 0.30), (0.35, 0.0))
+
+
+def ratchet_rungs(target_pct):
+    """Concrete (gain_reached, gain_locked) rungs for a given target."""
+    if not target_pct or target_pct <= 0:
+        return ()
+    return tuple((round(target_pct * hit, 2), round(target_pct * lock, 2))
+                 for hit, lock in RATCHET_FRACTIONS)
 # --- Gain protection: a RATCHET, not a percentage giveback ---------------
 #
 # The old rule ("once up 10%, close on giving back a third of the peak") was
@@ -261,10 +346,15 @@ def update_marks(pos, price, score):
     pos["peak_pct"] = max(pos.get("peak_pct") or 0.0, pnl)
 
     # Ratchet the stop upward through the milestones the trade has reached.
-    # Never downward -- a stop that can loosen is not a stop.
+    # Never downward -- a stop that can loosen is not a stop. Rungs are
+    # derived from this position's OWN target, so a tight day trade and a
+    # wide high-volatility hold each get protection proportional to what
+    # they are actually trying to capture.
     entry = pos.get("entry_price")
     if entry:
-        for reached, lock_at in RATCHET_STEPS:
+        tgt = pos.get("target_price")
+        target_pct = ((tgt / entry) - 1) * 100 if tgt else None
+        for reached, lock_at in (ratchet_rungs(target_pct) or RATCHET_STEPS):
             if pos["peak_pct"] >= reached:
                 new_stop = entry * (1 + lock_at / 100.0)
                 if new_stop > pos.get("stop_price", 0):
@@ -381,6 +471,20 @@ def _close_position(state, pos, price, reason, ts):
 
 # --- Entry logic --------------------------------------------------------
 
+def earnings_proximity(r):
+    """(days_until, is_close) for a candidate, from the earnings_risk block
+    lib.pipeline already computes. Returns (None, False) when the data isn't
+    there at all -- which is the honest answer for day-trade candidates,
+    since that scan uses full=False and deliberately skips the earnings
+    fetch to stay fast. Those positions are NOT sized down, and that is a
+    real remaining hole rather than something this function papers over."""
+    er = r.get("earnings_risk") or {}
+    days = er.get("days_until")
+    if days is None:
+        return None, False
+    return days, (0 <= days <= EARNINGS_WINDOW_DAYS)
+
+
 def _entry_reasons(r, strategy):
     """The 'why' behind a buy, in plain language, captured AT ENTRY so it
     can't be rewritten later to fit the outcome."""
@@ -447,8 +551,10 @@ def evaluate_entry(r):
 
     # --- INVEST ---
     if composite is not None and composite >= MIN_INVEST_SCORE and r.get("signal") == "BUY":
-        stop = price * (1 - INVEST_STOP_PCT / 100.0)
-        target = price * (1 + INVEST_TARGET_PCT / 100.0)
+        vol = (r.get("technical") or {}).get("volatility_pct")
+        stop_pct, target_pct = scaled_levels(vol, fallback_stop=INVEST_STOP_PCT)
+        stop = price * (1 - stop_pct / 100.0)
+        target = price * (1 + target_pct / 100.0)
         rr = (target - price) / (price - stop)
         if rr >= MIN_ENTRY_RR:
             return ("INVEST", price, stop, target, round(rr, 2), _entry_reasons(r, "INVEST"))
@@ -461,10 +567,15 @@ def evaluate_entry(r):
         target = exit_zone[0] if exit_zone else None
         # Fall back to fixed percentages when the computed swing levels are
         # unusable, rather than skipping an otherwise-valid setup.
+        # Swing levels are already volatility-aware (compute_day_trade_levels
+        # sizes them off the stock's own recent range), so they are preferred.
+        # The fallback now scales too, instead of a flat 6/14.
+        vol = (r.get("technical") or {}).get("volatility_pct")
+        f_stop, f_target = scaled_levels(vol, fallback_stop=TRADE_STOP_PCT)
         if not stop or stop >= price:
-            stop = price * (1 - TRADE_STOP_PCT / 100.0)
+            stop = price * (1 - f_stop / 100.0)
         if not target or target <= price:
-            target = price * (1 + TRADE_TARGET_PCT / 100.0)
+            target = price * (1 + f_target / 100.0)
         rr = (target - price) / (price - stop)
         if rr >= MIN_ENTRY_RR:
             return ("TRADE", price, stop, target, round(rr, 2), _entry_reasons(r, "TRADE"))
@@ -524,7 +635,14 @@ def run_cycle(payload, state=None, ts=None):
         sector = r.get("sector") or "Other"
         if sector_counts.get(sector, 0) >= MAX_PER_SECTOR:
             continue
-        shares, risk_dollars, reject = size_position(equity, state["cash"], entry, stop)
+        # Size against the loss that can actually occur. The stop we SET is
+        # unchanged -- it still protects intraday. But into a report the
+        # realistic downside is a gap, so sizing uses that instead, which
+        # cuts the position roughly in half and keeps the 1%-of-equity risk
+        # honest rather than nominal.
+        days_to_earnings, near_earnings = earnings_proximity(r)
+        sizing_stop = entry * (1 - EARNINGS_GAP_PCT / 100.0) if near_earnings else stop
+        shares, risk_dollars, reject = size_position(equity, state["cash"], entry, sizing_stop)
         if reject:
             continue
         cost = shares * entry
@@ -535,6 +653,11 @@ def run_cycle(payload, state=None, ts=None):
             "entry_price": round(entry, 4), "entry_ts": ts,
             "stop_price": round(stop, 4), "target_price": round(target, 4),
             "entry_rr": rr_val, "entry_score": r.get("composite_score"),
+            "volatility_pct": (r.get("technical") or {}).get("volatility_pct"),
+            "stop_pct": round((1 - stop / entry) * 100, 2),
+            "target_pct": round((target / entry - 1) * 100, 2),
+            "days_to_earnings": days_to_earnings,
+            "earnings_sized_down": bool(near_earnings),
             "entry_reasons": reasons, "risk_dollars": risk_dollars,
             "last_price": round(entry, 4), "peak_pct": 0.0, "cycles_held": 0,
             # Thesis-review state (see the SCORE_EMA_ALPHA block comment).
@@ -550,8 +673,10 @@ def run_cycle(payload, state=None, ts=None):
         state["actions"].append({
             "ts": ts, "kind": "buy", "ticker": ticker, "strategy": strategy,
             "shares": shares, "price": round(entry, 2),
-            "detail": f"{rr_val}:1 reward:risk, risking ${risk_dollars:,.0f} "
-                      f"({RISK_PER_TRADE_PCT:.0f}% of equity)",
+            "detail": (f"{rr_val}:1 reward:risk, risking ${risk_dollars:,.0f} "
+                       f"({RISK_PER_TRADE_PCT:.0f}% of equity)"
+                       + (f" — HALF SIZE, earnings in {days_to_earnings}d"
+                          if near_earnings else "")),
         })
 
     # --- 3. Mark the books ---

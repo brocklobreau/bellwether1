@@ -15,13 +15,17 @@ and the order matters -- risk first, then profit, then thesis:
 2. TAKE_PROFIT_PCT (+25%) -- books a big win outright. Without this a
    winner could only ever be closed by a reversal or by giving gains back.
 
-3. Trailing stop -- once a call has been up TRAILING_ACTIVATE_PCT (10%) at
-   any point, it closes if it gives back TRAILING_GIVEBACK_FRAC (a third)
-   of its PEAK gain. This is the one that fixes the worst flaw in the
-   original design: the stop-loss measures from ENTRY, not from the peak,
-   so a call that ran +50% and collapsed back to flat closed at ~0% having
-   never booked a cent. Peak is tracked per call as it goes (2026-08-28,
-   user-requested).
+3. Ratcheted stop -- the stop moves UP through fixed milestones as the
+   call gains (RATCHET_STEPS, imported from lib.bot so the graded record
+   and the paper bot cannot describe different rules). Clearing +8% moves
+   the floor to breakeven, +15% moves it to +7%, +20% to +12%.
+
+   This replaced a percentage-giveback trailing stop that was measured
+   doing the opposite of its job: closing on a third of peak given back
+   made the +25% target nearly unreachable, because a call had to run from
+   +10% to +25% without one ordinary pullback. It capped realized R:R at
+   1.81 against a designed 2.5. Flat rungs leave slack between levels so a
+   winner can breathe and still reach target (2026-09-02).
 
 4. SCORE_DROP_EXIT (10 points below the score at entry) -- "the signals
    started looking bad" made mechanical. Deliberately NOT "the signal
@@ -50,6 +54,13 @@ noisy and hard to compare.
 import json
 import os
 
+# Imported, not redeclared: the graded track record and the paper bot must
+# apply identical exit rules, and two copies of a constant is how they stop
+# doing that. (2026-09-02 -- the ratchet fix shipped to bot.py and
+# backtest.py but was missed here, so this tab was still grading calls on
+# the old broken rule.)
+from lib.bot import RATCHET_STEPS
+
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HISTORY_DIR = os.path.join(BASE, "results", "history")
 
@@ -60,8 +71,6 @@ REVERSAL_OF = {"BUY": "SELL", "SELL": "BUY"}
 # module docstring for what each one is for and why the order matters.
 STOP_LOSS_PCT = 10.0            # hard loss cut, measured from entry
 TAKE_PROFIT_PCT = 25.0          # book the win outright
-TRAILING_ACTIVATE_PCT = 10.0    # trailing stop only arms once up this much
-TRAILING_GIVEBACK_FRAC = 1 / 3  # ...then closes on giving back this much of PEAK gain
 SCORE_DROP_EXIT = 10.0          # composite points below entry score = thesis deteriorating
 
 # Editing watchlist.json does NOT reset this history -- past snapshots are
@@ -127,9 +136,13 @@ def _exit_reason(call, move, score):
         return "stop_loss"
     if move >= TAKE_PROFIT_PCT:
         return "take_profit"
+    # Ratcheted floor: highest milestone the call has cleared.
     peak = call.get("peak_pct") or 0.0
-    if peak >= TRAILING_ACTIVATE_PCT and move <= peak * (1 - TRAILING_GIVEBACK_FRAC):
-        return "trailing_stop"
+    for reached, lock_at in RATCHET_STEPS:
+        if peak >= reached:
+            if move <= lock_at:
+                return "trailing_stop"
+            break
     start_score = call.get("start_score")
     if start_score is not None and score is not None and score <= start_score - SCORE_DROP_EXIT:
         return "score_drop"
