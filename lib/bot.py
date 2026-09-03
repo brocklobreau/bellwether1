@@ -780,7 +780,10 @@ def public_snapshot(state):
         "closed_trades": sorted(state.get("closed_trades", []),
                                 key=lambda t: t.get("exit_ts") or "", reverse=True)[:60],
         "actions": list(reversed(state.get("actions", [])))[:40],
-        "equity_curve": state.get("equity_curve", [])[-400:],
+        # 400 points is only ~15 sessions at one cycle per 15 minutes, which
+        # is not enough behind the chart's 1M/3M ranges. The state keeps 2000
+        # (~77 sessions); expose all of it.
+        "equity_curve": state.get("equity_curve", [])[-2000:],
         "config": {
             "starting_equity": STARTING_EQUITY,
             "risk_per_trade_pct": RISK_PER_TRADE_PCT,

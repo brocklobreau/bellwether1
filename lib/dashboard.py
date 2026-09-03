@@ -388,6 +388,261 @@ def equity_curve_svg(curve, start_equity, width=760, height=140):
     </div>"""
 
 
+BOT_CHART_JS = r"""<script>
+(function () {
+  var host = document.getElementById('bot-chart');
+  if (!host) return;
+  var dataEl = document.getElementById('bot-curve-data');
+  if (!dataEl) return;
+  var raw;
+  try { raw = JSON.parse(dataEl.textContent || '[]'); } catch (e) { return; }
+  if (!raw || raw.length < 2) return;
+
+  var START = parseFloat(host.getAttribute('data-start')) || 0;
+  var svg = host.querySelector('svg');
+  var gArea = host.querySelector('.eq-area');
+  var gLine = host.querySelector('.eq-line');
+  var gBase = host.querySelector('.eq-base');
+  var gHair = host.querySelector('.eq-hair');
+  var gDot = host.querySelector('.eq-dot');
+  var tip = host.querySelector('.eq-tip');
+  var loEl = host.querySelector('.eq-lo');
+  var hiEl = host.querySelector('.eq-hi');
+  var sumEl = host.querySelector('.eq-summary');
+  var midEl = host.querySelector('.eq-mid');
+  var btns = host.querySelectorAll('.eq-range button');
+  var W = 760, H = 140;
+
+  // Distinct trading sessions, not calendar days: the market shuts on
+  // weekends and holidays, so "1 day" has to mean the last session that
+  // actually happened, or the shortest range is empty every Saturday.
+  var sessions = [];
+  for (var i = 0; i < raw.length; i++) {
+    var d = String(raw[i].t).slice(0, 10);
+    if (sessions[sessions.length - 1] !== d) sessions.push(d);
+  }
+
+  function slice(nSessions) {
+    if (!nSessions || nSessions >= sessions.length) return raw.slice();
+    var cut = sessions[sessions.length - nSessions];
+    return raw.filter(function (p) { return String(p.t).slice(0, 10) >= cut; });
+  }
+
+  var view = [], xs = [], ys = [];
+
+  function money(v) {
+    return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+  function stamp(t) {
+    var dt = new Date(t);
+    if (isNaN(dt.getTime())) return String(t);
+    return dt.toLocaleString('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  function draw(pts) {
+    view = pts;
+    var vals = pts.map(function (p) { return p.e; });
+    var vmin = Math.min.apply(null, vals), vmax = Math.max.apply(null, vals);
+    // Only pull the starting-equity line into scale when it is actually near
+    // the data. Forcing it into a one-day view squashes the curve into a
+    // flat line, which is the usual way a sparkline lies.
+    var spread = vmax - vmin;
+    var lo = vmin, hi = vmax;
+    if (spread <= 0 || Math.abs(START - vals[vals.length - 1]) < Math.max(spread * 6, 1)) {
+      lo = Math.min(lo, START); hi = Math.max(hi, START);
+    }
+    var span = (hi - lo) || Math.max(1, Math.abs(lo) * 0.001);
+    lo -= span * 0.10; hi += span * 0.10; span = hi - lo;
+
+    xs = []; ys = [];
+    for (var i = 0; i < pts.length; i++) {
+      xs.push(pts.length === 1 ? W / 2 : (i / (pts.length - 1)) * W);
+      ys.push(H - ((pts[i].e - lo) / span) * H);
+    }
+    var line = '';
+    for (var j = 0; j < xs.length; j++) {
+      line += (j ? ' ' : '') + xs[j].toFixed(2) + ',' + ys[j].toFixed(2);
+    }
+
+    var first = vals[0], last = vals[vals.length - 1];
+    var stroke = last >= first ? 'var(--good)' : 'var(--critical)';
+
+    gLine.setAttribute('points', line);
+    gLine.setAttribute('stroke', stroke);
+    gArea.setAttribute('points', '0,' + H + ' ' + line + ' ' + W + ',' + H);
+    gArea.setAttribute('fill', stroke);
+
+    var by = H - ((START - lo) / span) * H;
+    if (by >= 0 && by <= H) {
+      gBase.setAttribute('y1', by); gBase.setAttribute('y2', by);
+      gBase.style.display = '';
+      if (midEl) midEl.textContent = midEl.getAttribute('data-base');
+    } else {
+      // Off-scale in a short range. Hide the caption too -- a legend for a
+      // line that is not on the chart is just wrong.
+      gBase.style.display = 'none';
+      if (midEl) midEl.textContent = 'starting equity is off this range';
+    }
+
+    loEl.textContent = money(lo);
+    hiEl.textContent = money(hi);
+
+    var chg = first ? ((last - first) / Math.abs(first)) * 100 : 0;
+    var sign = chg >= 0 ? '+' : '';
+    sumEl.textContent = money(first) + ' → ' + money(last) + '  (' + sign + chg.toFixed(2) + '%)';
+    sumEl.className = 'eq-summary ' + (chg >= 0 ? 'pnl-good' : 'pnl-bad');
+    svg.setAttribute('aria-label',
+      'Bot equity over ' + pts.length + ' points, ' + money(first) + ' to ' + money(last)
+      + ', ' + sign + chg.toFixed(2) + ' percent. Arrow keys read individual points.');
+    hideTip();
+  }
+
+  function nearest(clientX) {
+    var r = svg.getBoundingClientRect();
+    if (!r.width) return -1;
+    var vx = ((clientX - r.left) / r.width) * W;
+    var best = 0, bd = Infinity;
+    for (var i = 0; i < xs.length; i++) {
+      var d = Math.abs(xs[i] - vx);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
+  function showAt(i) {
+    if (i < 0 || i >= view.length) return;
+    gHair.setAttribute('x1', xs[i]); gHair.setAttribute('x2', xs[i]);
+    gHair.style.display = '';
+    gDot.setAttribute('cx', xs[i]); gDot.setAttribute('cy', ys[i]);
+    gDot.style.display = '';
+    // textContent, never innerHTML -- these strings are data.
+    tip.querySelector('.eq-tip-val').textContent = money(view[i].e);
+    tip.querySelector('.eq-tip-when').textContent = stamp(view[i].t);
+    var delta = view[i].e - view[0].e;
+    var dEl = tip.querySelector('.eq-tip-delta');
+    dEl.textContent = (delta >= 0 ? '+' : '−') + money(Math.abs(delta)) + ' in range';
+    dEl.className = 'eq-tip-delta ' + (delta >= 0 ? 'pnl-good' : 'pnl-bad');
+    var pct = (xs[i] / W) * 100;
+    tip.style.left = pct + '%';
+    tip.style.transform = 'translateX(' + (pct > 70 ? '-100%' : (pct < 30 ? '0%' : '-50%')) + ')';
+    tip.style.display = 'flex';   // 'block' would override the CSS column layout
+    host.setAttribute('data-idx', i);
+  }
+
+  function hideTip() {
+    tip.style.display = 'none';
+    gHair.style.display = 'none';
+    gDot.style.display = 'none';
+    host.removeAttribute('data-idx');
+  }
+
+  var plot = host.querySelector('.eq-plot');
+  plot.addEventListener('pointermove', function (ev) { showAt(nearest(ev.clientX)); });
+  plot.addEventListener('pointerleave', hideTip);
+  plot.addEventListener('pointerdown', function (ev) { showAt(nearest(ev.clientX)); });
+
+  // Keyboard parity: the same readout without a pointer.
+  svg.addEventListener('keydown', function (ev) {
+    var cur = parseInt(host.getAttribute('data-idx'), 10);
+    if (isNaN(cur)) cur = view.length - 1;
+    if (ev.key === 'ArrowLeft') { showAt(Math.max(0, cur - 1)); ev.preventDefault(); }
+    else if (ev.key === 'ArrowRight') { showAt(Math.min(view.length - 1, cur + 1)); ev.preventDefault(); }
+    else if (ev.key === 'Home') { showAt(0); ev.preventDefault(); }
+    else if (ev.key === 'End') { showAt(view.length - 1); ev.preventDefault(); }
+    else if (ev.key === 'Escape') { hideTip(); }
+  });
+  svg.addEventListener('blur', hideTip);
+
+  function pick(btn) {
+    var n = parseInt(btn.getAttribute('data-sessions'), 10) || 0;
+    for (var k = 0; k < btns.length; k++) {
+      btns[k].classList.remove('is-on');
+      btns[k].setAttribute('aria-pressed', 'false');
+    }
+    btn.classList.add('is-on');
+    btn.setAttribute('aria-pressed', 'true');
+    var pts = slice(n);
+    if (pts.length < 2) {
+      // Say so rather than draw a flat line, which reads as "the bot did nothing".
+      sumEl.textContent = 'Not enough history for this range yet.';
+      sumEl.className = 'eq-summary';
+      return;
+    }
+    draw(pts);
+  }
+
+  for (var b = 0; b < btns.length; b++) {
+    btns[b].addEventListener('click', function (ev) { pick(ev.currentTarget); });
+  }
+
+  // Open on the shortest range that actually has data behind it.
+  var startBtn = null;
+  for (var q = 0; q < btns.length; q++) {
+    var n = parseInt(btns[q].getAttribute('data-sessions'), 10) || 0;
+    if (slice(n).length >= 2) { startBtn = btns[q]; break; }
+  }
+  pick(startBtn || btns[btns.length - 1]);
+})();
+</script>"""
+
+
+def bot_equity_chart_html(curve, start_equity):
+    """Interactive version of the equity sparkline: range presets plus a
+    crosshair readout. Drawn client-side because the range buttons have to
+    rescale the axis, and a server-rendered SVG can only ever show one
+    window. Still no chart library -- the page stays one self-contained file."""
+    pts = [p for p in (curve or [])
+           if p.get("equity") is not None and p.get("ts")]
+    if len(pts) < 2:
+        return ('<div class="empty-note">Not enough history to plot yet &mdash; the curve appears '
+                'once the bot has run a few cycles.</div>')
+
+    data = esc_json([{"t": p["ts"], "e": round(float(p["equity"]), 2)} for p in pts])
+    # Sessions, not calendar days -- see the JS. 1W = 5 sessions, 1M = 21.
+    ranges = (("1D", 1), ("3D", 3), ("1W", 5), ("1M", 21), ("3M", 63), ("All", 0))
+    buttons = "".join(
+        f'<button type="button" data-sessions="{n}" aria-pressed="false">{lbl}</button>'
+        for lbl, n in ranges)
+
+    return f"""<div class="equity-chart" id="bot-chart" data-start="{start_equity}">
+      <div class="eq-head">
+        <div class="eq-range" role="group" aria-label="Chart time range">{buttons}</div>
+        <span class="eq-summary"></span>
+      </div>
+      <div class="eq-plot">
+        <svg viewBox="0 0 760 140" preserveAspectRatio="none" role="img" tabindex="0"
+             aria-label="Bot equity curve">
+          <polygon class="eq-area" points="" fill="var(--good)" opacity="0.10"/>
+          <line class="eq-base" x1="0" y1="0" x2="760" y2="0" stroke="var(--ink-faint)"
+                stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+          <line class="eq-hair" x1="0" y1="0" x2="0" y2="140" stroke="var(--ink-faint)"
+                stroke-width="1" opacity="0.8" style="display:none"
+                vector-effect="non-scaling-stroke"/>
+          <polyline class="eq-line" points="" fill="none" stroke="var(--good)" stroke-width="2"
+                    stroke-linejoin="round" stroke-linecap="round"
+                    vector-effect="non-scaling-stroke"/>
+          <circle class="eq-dot" r="4" fill="var(--surface)" stroke="var(--ink)"
+                  stroke-width="2" style="display:none" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <div class="eq-tip" style="display:none">
+          <span class="eq-tip-val"></span>
+          <span class="eq-tip-when"></span>
+          <span class="eq-tip-delta"></span>
+        </div>
+      </div>
+      <div class="equity-axis">
+        <span class="eq-lo"></span>
+        <span class="equity-axis-mid eq-mid"
+              data-base="dashed line = ${start_equity:,.0f} starting equity">dashed line = ${start_equity:,.0f} starting equity</span>
+        <span class="eq-hi"></span>
+      </div>
+      <script type="application/json" id="bot-curve-data">{data}</script>
+    </div>{BOT_CHART_JS}"""
+
+
+
 def bot_tab_html(botdata):
     """The paper-trading bot panel: what it holds, what it did, and whether
     it's actually working. Leads with the disclaimer because a page showing
@@ -408,7 +663,8 @@ def bot_tab_html(botdata):
     ret_tone = "pnl-good" if (ret or 0) >= 0 else "pnl-bad"
     exp = s.get("expectancy_pct")
 
-    chart = equity_curve_svg(botdata.get("equity_curve"), s.get("starting_equity") or 100000)
+    chart = bot_equity_chart_html(botdata.get("equity_curve"),
+                                  s.get("starting_equity") or 100000)
 
     def pos_row(p):
         up = (p.get("unrealized_pct") or 0) >= 0
@@ -583,6 +839,62 @@ def backtest_tab_html(bt):
     reason_html = " · ".join(f"<b>{v}</b> {esc(k.replace('_', ' '))}" for k, v in
                              sorted(reasons.items(), key=lambda x: -x[1])) or "—"
 
+    dep = bt.get("deployment") or {}
+    deploy_html = ""
+    if dep:
+        b = dep.get("blocked") or {}
+        total_blocked = (b.get("slots_full", 0) + b.get("sector_cap", 0)
+                         + b.get("size_reject", 0))
+        entered = b.get("entered", 0)
+        # The question this panel exists to answer: was the account idle
+        # because nothing qualified, or because a cap turned qualifying
+        # candidates away? Those have opposite fixes.
+        avg_inv = dep.get("avg_invested_pct") or 0
+        if avg_inv >= 85:
+            verdict = ("Fully deployed. Cash drag is not what is holding the return down, "
+                       "so the return has to come from the trades themselves.")
+        elif total_blocked > entered:
+            verdict = (f"Under-deployed at {avg_inv}% invested, and caps turned away "
+                       f"{total_blocked:,} qualifying candidates against {entered:,} taken. "
+                       "The limit is the position/sector/sizing caps, not signal quality.")
+        else:
+            verdict = (f"Under-deployed at {avg_inv}% invested, but caps only turned away "
+                       f"{total_blocked:,} candidates against {entered:,} taken. The account "
+                       "sat in cash mostly because nothing qualified &mdash; loosening the "
+                       "caps would not have filled it.")
+        rej = dep.get("size_reject_reasons") or {}
+        rej_html = (" &middot; ".join(f"<b>{v:,}</b> {esc(k)}" for k, v in
+                                      sorted(rej.items(), key=lambda x: -x[1]))
+                    or "&mdash;")
+        deploy_html = f"""
+    <section>
+      <h2 class="section-title">Capital deployment</h2>
+      <p class="tab-blurb">A return earned while most of the account sits in cash is a different
+        result from the same return earned fully invested &mdash; and the two call for opposite
+        fixes. This measures which one happened.</p>
+      <div class="bot-stat-grid">
+        <div class="bot-stat"><span class="bot-stat-num">{dep.get('avg_invested_pct')}%</span>
+          <span class="bot-stat-label">avg invested (median {dep.get('median_invested_pct')}%)</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{dep.get('avg_open_positions')}</span>
+          <span class="bot-stat-label">avg open of {dep.get('max_positions_cap')} slots</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{dep.get('pct_sessions_at_cap')}%</span>
+          <span class="bot-stat-label">sessions at full cap</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{dep.get('pct_sessions_under_half')}%</span>
+          <span class="bot-stat-label">sessions under half full</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{dep.get('avg_candidates_per_session')}</span>
+          <span class="bot-stat-label">candidates/session ({b.get('no_candidate_day', 0):,} with none)</span></div>
+      </div>
+      <p class="tab-blurb" style="margin-top:12px;"><b>Entries taken:</b> {entered:,} &middot;
+        <b>turned away by slot cap:</b> {b.get('slots_full', 0):,} &middot;
+        <b>by sector cap:</b> {b.get('sector_cap', 0):,} &middot;
+        <b>by sizing:</b> {b.get('size_reject', 0):,}<br>
+        <span style="opacity:.75">sizing rejections: {rej_html}</span><br>
+        <span style="opacity:.6">Turn-aways are counted per candidate per session, so the same
+        stock blocked on ten consecutive days counts ten times. Read them as a ratio against
+        entries taken, not as a count of missed opportunities.</span></p>
+      <div class="empty-note" style="margin-top:12px;">{verdict}</div>
+    </section>"""
+
     yearly = bt.get("yearly") or []
     yearly_html = ""
     if len(yearly) > 1:
@@ -712,6 +1024,8 @@ def backtest_tab_html(bt):
         Sized at {cfg.get('risk_per_trade_pct')}% risk per trade from ${cfg.get('starting_equity', 0):,.0f},
         max {cfg.get('max_positions')} positions.</p>
     </section>
+
+    {deploy_html}
 
     {yearly_html}
 
@@ -2060,7 +2374,43 @@ def generate_html(payload=None):
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; padding: 12px 14px 8px; margin-bottom: 16px;
   }}
-  .equity-chart svg {{ width: 100%; height: 140px; display: block; }}
+  .equity-chart svg {{ width: 100%; height: 140px; display: block; outline: none; }}
+  .equity-chart svg:focus-visible {{ box-shadow: 0 0 0 2px var(--accent); border-radius: 6px; }}
+  .eq-head {{
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+  }}
+  .eq-range {{ display: flex; gap: 2px; }}
+  .eq-range button {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.04em;
+    padding: 4px 9px; border-radius: 6px; cursor: pointer;
+    background: transparent; border: 1px solid transparent; color: var(--ink-faint);
+    transition: background 120ms ease, color 120ms ease;
+  }}
+  .eq-range button:hover {{ background: var(--surface-2); color: var(--ink-muted); }}
+  .eq-range button.is-on {{
+    background: var(--surface-2); border-color: var(--border); color: var(--ink);
+  }}
+  .eq-summary {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-variant-numeric: tabular-nums; color: var(--ink-muted);
+  }}
+  .eq-plot {{ position: relative; touch-action: none; }}
+  .eq-tip {{
+    position: absolute; top: -4px; pointer-events: none; z-index: 4;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 9px; box-shadow: 0 4px 14px rgba(0,0,0,0.16);
+    display: flex; flex-direction: column; gap: 1px; white-space: nowrap;
+  }}
+  .eq-tip-val {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600;
+    color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1.2;
+  }}
+  .eq-tip-when {{ font-size: 10px; color: var(--ink-faint); }}
+  .eq-tip-delta {{
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }}
   .equity-axis {{
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 6px; font-family: 'IBM Plex Mono', monospace;
