@@ -104,6 +104,24 @@ EARNINGS_GAP_PCT = 20.0       # the loss to size against, not the stop we set
 # stock lands on -10%/+25%, i.e. exactly today's behaviour -- this
 # generalises the current setting rather than replacing it. (2026-09-02,
 # user-identified: "every stock is different")
+# MEASURED AND REJECTED (2026-09-03). The reasoning above is sound and the
+# result still went the other way: on two years of real prices, volatility-
+# scaled levels returned +13.43% against +25.53% for fixed 10/25 on identical
+# data -- twelve points worse, with more trades (325 vs 277) and a lower
+# realized R:R (2.09 vs 2.64). Lower drawdown (-12.2% vs -14.5%), but not
+# nearly enough to justify halving the return.
+#
+# The likeliest explanation: scaling shrinks the target for low-volatility
+# names, so those positions bank small wins instead of running. In a trending
+# market letting winners run beats sizing them "appropriately" -- the same
+# lesson the +5% target experiment taught, arriving by a different route.
+#
+# The code stays because it is tested, documented and might well win in a
+# choppy or bear regime that this window does not contain. It is OFF by
+# default, and the sweep keeps running it head-to-head so the conclusion
+# gets re-checked against new data rather than frozen.
+USE_VOL_SCALED_LEVELS = False
+
 TARGET_RR = 2.5               # reward:risk every position is built to
 VOL_STOP_MULT = 5.0           # stop distance = this many average daily moves
 
@@ -551,8 +569,11 @@ def evaluate_entry(r):
 
     # --- INVEST ---
     if composite is not None and composite >= MIN_INVEST_SCORE and r.get("signal") == "BUY":
-        vol = (r.get("technical") or {}).get("volatility_pct")
-        stop_pct, target_pct = scaled_levels(vol, fallback_stop=INVEST_STOP_PCT)
+        if USE_VOL_SCALED_LEVELS:
+            vol = (r.get("technical") or {}).get("volatility_pct")
+            stop_pct, target_pct = scaled_levels(vol, fallback_stop=INVEST_STOP_PCT)
+        else:
+            stop_pct, target_pct = INVEST_STOP_PCT, INVEST_TARGET_PCT
         stop = price * (1 - stop_pct / 100.0)
         target = price * (1 + target_pct / 100.0)
         rr = (target - price) / (price - stop)
@@ -570,8 +591,11 @@ def evaluate_entry(r):
         # Swing levels are already volatility-aware (compute_day_trade_levels
         # sizes them off the stock's own recent range), so they are preferred.
         # The fallback now scales too, instead of a flat 6/14.
-        vol = (r.get("technical") or {}).get("volatility_pct")
-        f_stop, f_target = scaled_levels(vol, fallback_stop=TRADE_STOP_PCT)
+        if USE_VOL_SCALED_LEVELS:
+            vol = (r.get("technical") or {}).get("volatility_pct")
+            f_stop, f_target = scaled_levels(vol, fallback_stop=TRADE_STOP_PCT)
+        else:
+            f_stop, f_target = TRADE_STOP_PCT, TRADE_TARGET_PCT
         if not stop or stop >= price:
             stop = price * (1 - f_stop / 100.0)
         if not target or target <= price:
