@@ -776,6 +776,11 @@ def run():
                             # key too -- otherwise the new variants silently
                             # never run (same trap as `days` on 2026-09-02).
                             "sweep_variants": [list(v) for v in bt.SWEEP_VARIANTS],
+                            # Result-shape version. Adding a field to the
+                            # result does not change any exit rule, so without
+                            # this the cache keeps serving a result that simply
+                            # lacks the new field.
+                            "result_schema": 2,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
@@ -804,6 +809,9 @@ def run():
                             f"({v['rr']}:1): {v['return_pct']:+.2f}%, "
                             f"maxDD {v['max_dd_pct']:.1f}%, {v['trades']} trades, "
                             f"hit {v['hit_rate_pct']}%")
+                        for y in v.get("yearly", []):
+                            log(f"      {y['year']}: {y['return_pct']:+.2f}% "
+                                f"({y['trades']} trades, hit {y['hit_rate_pct']}%)")
         except Exception as e:
             log(f"backtest failed (non-fatal): {e}")
             traceback.print_exc()

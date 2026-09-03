@@ -404,6 +404,11 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    "thesis_exit_max_gain_pct": THESIS_EXIT_MAX_GAIN_PCT,
                    "vol_scaled": vol_scaled,
                    "days": days,
+                   # Bumped whenever the SHAPE of this result changes (new
+                   # fields), not just its values -- otherwise a cached result
+                   # from an older schema is served forever and the new fields
+                   # silently never appear. Same trap as `days` on 2026-09-02.
+                   "result_schema": 2,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS]},
         "final_equity": round(final, 2),
         "total_return_pct": total_return,
@@ -448,6 +453,12 @@ def run_and_save(days=730, sweep=True, universe=None, fetch=None):
                     "return_pct": r["total_return_pct"], "max_dd_pct": r["max_drawdown_pct"],
                     "trades": r["closed_trades"], "hit_rate_pct": r["hit_rate_pct"],
                     "expectancy_pct": r["expectancy_pct"],
+                    # Each variant split by year. A variant that wins the whole
+                    # window on the back of one good year is fitted, not better;
+                    # only the split can tell those two apart.
+                    "yearly": [{"year": y["year"], "return_pct": y["return_pct"],
+                                "trades": y["trades"], "hit_rate_pct": y["hit_rate_pct"]}
+                               for y in (r.get("yearly") or [])],
                 })
             except Exception as e:
                 variants.append({"stop_pct": stop, "target_pct": target, "vol_scaled": vs,
