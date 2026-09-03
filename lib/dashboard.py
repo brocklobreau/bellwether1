@@ -613,6 +613,10 @@ def backtest_tab_html(bt):
 
     sens = bt.get("sensitivity") or []
     HILITE = ' style="background:var(--surface-2)"'
+    # One column per calendar year, so a variant that only works in one year is
+    # visible as such instead of hiding inside a two-year total.
+    sens_years = sorted({y.get("year") for v in sens for y in (v.get("yearly") or [])
+                         if y.get("year")})
     sens_parts = []
     for v in sens:
         if "error" in v:
@@ -627,6 +631,15 @@ def backtest_tab_html(bt):
         # a nested quoted f-string here needs one.
         label = ("vol-scaled" if v.get("vol_scaled")
                  else f"{v.get('stop_pct')}% / {v.get('target_pct')}%")
+        vy = {y.get("year"): y for y in (v.get("yearly") or [])}
+        year_cells = ""
+        for yr in sens_years:
+            y = vy.get(yr)
+            if not y:
+                year_cells += "<td class='price-cell'>&mdash;</td>"
+                continue
+            ycls = "pnl-good" if (y.get("return_pct") or 0) >= 0 else "pnl-bad"
+            year_cells += f"<td class='price-cell {ycls}'>{pct(y.get('return_pct'))}</td>"
         sens_parts.append(
             f"<tr{HILITE if live else ''}>"
             f"<td class='mono'>{label}"
@@ -636,9 +649,11 @@ def backtest_tab_html(bt):
             f"<td class='price-cell'>{pct(v.get('max_dd_pct'))}</td>"
             f"<td class='price-cell mono'>{v.get('trades')}</td>"
             f"<td class='price-cell mono'>{v.get('hit_rate_pct')}%</td>"
-            f"<td class='price-cell {exp_cls}'>{pct(v.get('expectancy_pct'))}</td></tr>")
+            f"<td class='price-cell {exp_cls}'>{pct(v.get('expectancy_pct'))}</td>"
+            f"{year_cells}</tr>")
     sens_rows = "".join(sens_parts) or \
-        '<tr><td colspan="7" class="empty-cell">Sensitivity sweep unavailable.</td></tr>'
+        f'<tr><td colspan="{7 + len(sens_years)}" class="empty-cell">Sensitivity sweep unavailable.</td></tr>'
+    sens_year_heads = "".join(f"<th>{esc(y)}</th>" for y in sens_years)
 
     trades = bt.get("trades") or []
     trade_rows = "".join(
@@ -702,14 +717,16 @@ def backtest_tab_html(bt):
 
     <section>
       <h2 class="section-title">Parameter sensitivity</h2>
-      <p class="tab-blurb">The same year re-run at different stop/target settings. This matters more than the
+      <p class="tab-blurb">The same window re-run at different stop/target settings. This matters more than the
         headline number: one parameter set that looks good is usually luck, whereas a whole neighbourhood
         that looks good is closer to a real effect. If only the highlighted row works, the result is fitted
-        to this particular year and should not be trusted.</p>
+        to this particular window and should not be trusted. The year columns split each variant apart &mdash;
+        a setting that wins the total on the back of a single strong year is fitted, not better, and only
+        the split can tell those two apart.</p>
       <div class="table-scroll">
         <table>
           <thead><tr><th>Stop / target</th><th>R:R</th><th>Return</th><th>Max DD</th>
-            <th>Trades</th><th>Win rate</th><th>Expectancy</th></tr></thead>
+            <th>Trades</th><th>Win rate</th><th>Expectancy</th>{sens_year_heads}</tr></thead>
           <tbody>{sens_rows}</tbody>
         </table>
       </div>
