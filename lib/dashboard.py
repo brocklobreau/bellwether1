@@ -982,6 +982,58 @@ def backtest_tab_html(bt):
                        f"than picking at random. Any setting chosen off the tables above is likely "
                        f"to be the wrong one.")
 
+        # --- same-concentration random benchmark -------------------------
+        rb_all = wf.get("random_benchmark") or {}
+        rand_rows, rand_note = "", ""
+        for phase in ("train", "test"):
+            rb = rb_all.get(phase) or {}
+            if not rb or rb.get("error") or rb.get("bot_percentile") is None:
+                continue
+            p = rb["bot_percentile"]
+            rand_rows += (
+                f"<tr><td class='mono'><b>{phase}</b></td>"
+                f"<td class='price-cell mono'>{pct(rb.get('bot_return_pct'))}</td>"
+                f"<td class='price-cell mono'>{pct(rb.get('median_pct'))}</td>"
+                f"<td class='price-cell mono' style='opacity:.7'>"
+                f"{pct(rb.get('p25_pct'))} &ndash; {pct(rb.get('p75_pct'))}</td>"
+                f"<td class='price-cell {'pnl-good' if p >= 50 else 'pnl-bad'}'><b>{p}th</b></td></tr>")
+        if rand_rows:
+            tp = ((rb_all.get("test") or {}).get("bot_percentile"))
+            if tp is None:
+                rand_note = ""
+            elif tp >= 65:
+                rand_note = ("Out-of-sample the bot beat most equally-concentrated random portfolios. "
+                             "The entry signal is adding something beyond luck.")
+            elif tp >= 35:
+                rand_note = ("Out-of-sample the bot sits mid-pack among random portfolios of the same "
+                             "size. The picking is not measurably better than chance &mdash; the gap to "
+                             "buy-and-hold is mostly the cost of holding ten names instead of the whole "
+                             "universe, not bad selection.")
+            else:
+                rand_note = ("Out-of-sample the bot lost to most random portfolios of the same size. "
+                             "The entry score is choosing worse than chance, and holding more names "
+                             "would beat picking better ones.")
+            rb_t = rb_all.get("test") or {}
+            rand_html = f"""
+      <h2 class="section-title" style="margin-top:26px;">Versus random portfolios of the same size</h2>
+      <p class="tab-blurb">Buy-and-hold of all {rb_t.get('universe_size', '')} names is the wrong
+        yardstick for a bot that holds {rb_t.get('names_per_portfolio', 10)} at a time &mdash; a
+        concentrated portfolio trails a broad one in a broad rally with nothing wrong with its picks.
+        So: {rb_t.get('trials', '')} random {rb_t.get('names_per_portfolio', 10)}-name portfolios drawn
+        from the same universe, held through the same window, paying the same costs, with zero skill.
+        Where the bot lands in that spread separates <i>bad selection</i> from <i>plain
+        concentration</i>.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Window</th><th>Bot</th><th>Random median</th>
+            <th>Random 25th&ndash;75th</th><th>Bot percentile</th></tr></thead>
+          <tbody>{rand_rows}</tbody>
+        </table>
+      </div>
+      <div class="empty-note" style="margin-top:12px;">{rand_note}</div>"""
+        else:
+            rand_html = ""
+
         wf_html = f"""
     <section>
       <h2 class="section-title">Walk-forward &mdash; the only out-of-sample number here</h2>
@@ -1016,6 +1068,7 @@ def backtest_tab_html(bt):
         starting equity, so the two columns are independent runs rather than one compounding sequence.
         Half a window is also a small sample &mdash; this check is good at exposing overfitting, and
         weak at proving an edge exists.</p>
+      {rand_html}
     </section>"""
 
     ladders = [l for l in (bt.get("ratchet_sweep") or []) if "error" not in l]
