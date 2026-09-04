@@ -61,6 +61,7 @@ that is no longer live.
 """
 import json
 import os
+import random
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -549,7 +550,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 6,
+                   "result_schema": 7,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -570,6 +571,68 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
         "equity_curve": curve[::max(1, len(curve) // 300)],
         "trades": sorted(closed, key=lambda t: t["exit_date"], reverse=True)[:80],
     }
+
+
+# --- Random-portfolio benchmark ------------------------------------------
+#
+# Buy-and-hold of the WHOLE universe is the wrong yardstick for a bot that
+# holds ~9 names at a time: a concentrated portfolio underperforms a broad
+# one in a broad rally without anything being wrong with its picks. That
+# makes the -11pt gap to buy-and-hold ambiguous -- it could be bad selection,
+# bad timing, or simply the cost of holding 10 things instead of 43.
+#
+# This removes the ambiguity. Draw many random 10-name portfolios from the
+# same universe, hold each to the end of the window, and see where the bot
+# lands in that distribution. Same concentration, same window, same costs,
+# zero skill. Beating it means the entry signal adds value. Losing to it
+# means the scoring is choosing worse than a coin flip, and the honest fix
+# is to hold more names rather than to pick better ones.
+def random_portfolio_benchmark(series, date_from, date_to, n_names=10,
+                               trials=500, seed=1234):
+    per_ticker = {}
+    for sym, h in series.items():
+        inside = [(d, c) for d, c in h if date_from <= d <= date_to and c]
+        if len(inside) < 2:
+            continue
+        buy = inside[0][1] * (1 + COST_PER_SIDE_PCT / 100.0)
+        sell = inside[-1][1] * (1 - COST_PER_SIDE_PCT / 100.0)
+        per_ticker[sym] = (sell / buy - 1) * 100.0
+
+    names = sorted(per_ticker)
+    if len(names) < n_names + 1:
+        return {"error": f"universe too small ({len(names)}) for {n_names}-name draws"}
+
+    rng = random.Random(seed)          # fixed seed: same answer every run
+    draws = []
+    for _ in range(trials):
+        pick = rng.sample(names, n_names)
+        draws.append(sum(per_ticker[p] for p in pick) / n_names)
+    draws.sort()
+
+    def pctile(p):
+        i = min(len(draws) - 1, max(0, int(round(p / 100.0 * (len(draws) - 1)))))
+        return round(draws[i], 2)
+
+    return {
+        "trials": trials,
+        "names_per_portfolio": n_names,
+        "universe_size": len(names),
+        "median_pct": pctile(50),
+        "p10_pct": pctile(10),
+        "p25_pct": pctile(25),
+        "p75_pct": pctile(75),
+        "p90_pct": pctile(90),
+        "worst_pct": round(draws[0], 2),
+        "best_pct": round(draws[-1], 2),
+        "_draws": draws,
+    }
+
+
+def bot_percentile(draws, bot_return_pct):
+    """Share of random portfolios the bot beat, 0-100."""
+    if not draws or bot_return_pct is None:
+        return None
+    return round(100.0 * sum(1 for d in draws if d < bot_return_pct) / len(draws), 1)
 
 
 # --- Walk-forward validation --------------------------------------------
@@ -682,7 +745,21 @@ def run_walk_forward(series, sectors, days=730):
     # against what you would have got by picking a candidate at random.
     edge = round(picked["test_return_pct"] - avg_test, 2)
 
+    # Same-concentration, zero-skill yardstick for each window.
+    randbench = {}
+    live_row = next((r for r in graded if r["label"] == "10/25 live ladder"), None)
+    for phase, (d0, d1) in (("train", train), ("test", test)):
+        rb = random_portfolio_benchmark(series, d0, d1)
+        if "error" not in rb:
+            draws = rb.pop("_draws")
+            rb["bot_return_pct"] = (live_row or {}).get(f"{phase}_return_pct")
+            rb["bot_percentile"] = bot_percentile(draws, rb["bot_return_pct"])
+            rb["picked_return_pct"] = picked.get(f"{phase}_return_pct")
+            rb["picked_percentile"] = bot_percentile(draws, rb["picked_return_pct"])
+        randbench[phase] = rb
+
     return {
+        "random_benchmark": randbench,
         "train_window": {"from": train[0], "to": train[1]},
         "test_window": {"from": test[0], "to": test[1]},
         "rows": rows,

@@ -780,7 +780,7 @@ def run():
                             # result does not change any exit rule, so without
                             # this the cache keeps serving a result that simply
                             # lacks the new field.
-                            "result_schema": 6,
+                            "result_schema": 7,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
@@ -843,6 +843,15 @@ def run():
                         f"avg candidate {wf['avg_test_return_pct']:+.2f}%; "
                         f"edge from tuning {wf['edge_vs_random_pick_pct']:+.2f}%; "
                         f"rank correlation {wf['rank_correlation']}")
+                    for phase, rb in (wf.get("random_benchmark") or {}).items():
+                        if rb.get("error"):
+                            log(f"    random-{phase}: {rb['error']}")
+                        elif rb.get("bot_percentile") is not None:
+                            log(f"    random {phase}: bot {rb['bot_return_pct']:+.2f}% vs "
+                                f"{rb['trials']} random {rb['names_per_portfolio']}-name portfolios "
+                                f"(median {rb['median_pct']:+.2f}%, "
+                                f"p25 {rb['p25_pct']:+.2f}%, p75 {rb['p75_pct']:+.2f}%) "
+                                f"-> {rb['bot_percentile']}th percentile")
                     for r in wf.get("rows", []):
                         log(f"      {r['label']:<24} train {str(r.get('train_return_pct')):>7} "
                             f"test {str(r.get('test_return_pct')):>7}")
