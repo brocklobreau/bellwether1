@@ -780,7 +780,7 @@ def run():
                             # result does not change any exit rule, so without
                             # this the cache keeps serving a result that simply
                             # lacks the new field.
-                            "result_schema": 8,
+                            "result_schema": 9,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
@@ -863,6 +863,21 @@ def run():
                     for r in wf.get("rows", []):
                         log(f"      {r['label']:<24} train {str(r.get('train_return_pct')):>7} "
                             f"test {str(r.get('test_return_pct')):>7}")
+                rob = res.get("period_robustness") or {}
+                if rob.get("error"):
+                    log(f"  robustness: FAILED -- {rob['error']}")
+                elif rob.get("rows"):
+                    log(f"  sub-period robustness ({rob.get('n_periods')} periods):")
+                    for pd_ in rob.get("periods", []):
+                        log(f"    period {pd_['from']}..{pd_['to']} "
+                            f"coin-flip median {pd_.get('random_median_pct')}%")
+                    for r in rob["rows"]:
+                        cells = " ".join(
+                            ("ERR" if "error" in c or c.get("return_pct") is None
+                             else f"{c['return_pct']:+.1f}%/{c.get('percentile')}th")
+                            for c in r.get("periods", []))
+                        log(f"    {r['label']:<28} {cells}  avg {r.get('avg_percentile')} "
+                            f"above-median {r.get('periods_above_median')}/{r.get('periods_scored')}")
                 for l in res.get("ratchet_sweep", []):
                     if "error" in l:
                         log(f"  ladder {l['label']}: ERROR {l['error']}")

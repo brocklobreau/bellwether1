@@ -255,7 +255,8 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  fetch=None, verbose=True, series=None, sectors=None,
                  vol_scaled=False, ratchet_fractions=None,
                  date_from=None, date_to=None,
-                 entry_mode="strength", entry_threshold=None):
+                 entry_mode="strength", entry_threshold=None,
+                 hold_forever=False):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
@@ -320,7 +321,11 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             pos = positions[sym]
             pnl = (price - pos["entry_price"]) / pos["entry_price"] * 100.0
             pos["peak_pct"] = max(pos["peak_pct"], pnl)
-            reason = _exit_reason(pos, price, tscore, fractions=ratchet_fractions)
+            # hold_forever isolates SELECTION from the cost of trading: same
+            # picks, same sizing, but nothing is ever sold. Whatever the gap
+            # to this row is, the exit machinery is responsible for.
+            reason = (None if hold_forever
+                      else _exit_reason(pos, price, tscore, fractions=ratchet_fractions))
             if reason:
                 fill = price * (1 - COST_PER_SIDE_PCT / 100.0)   # sells fill lower
                 cash += pos["shares"] * fill
@@ -572,7 +577,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 8,
+                   "result_schema": 9,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -646,7 +651,7 @@ def random_portfolio_benchmark(series, date_from, date_to, n_names=10,
         "p90_pct": pctile(90),
         "worst_pct": round(draws[0], 2),
         "best_pct": round(draws[-1], 2),
-        "_draws": draws,
+        "_draws": draws,          # kept for per-period percentile scoring
     }
 
 
@@ -655,6 +660,102 @@ def bot_percentile(draws, bot_return_pct):
     if not draws or bot_return_pct is None:
         return None
     return round(100.0 * sum(1 for d in draws if d < bot_return_pct) / len(draws), 1)
+
+
+# --- Sub-period robustness -----------------------------------------------
+#
+# One train/test split found that flipping the entry signal from strength to
+# weakness moved the bot from the 8th percentile of coin-flip portfolios to
+# the ~60th. Encouraging, and exactly the kind of result that is usually an
+# artifact: two thresholds, one split, one universe, one strongly-rising
+# window. "Buy the dip" always looks good in a market that keeps recovering.
+#
+# So: cut the window into four consecutive periods and run every candidate in
+# each one, each scored against coin-flip portfolios drawn from that SAME
+# period. A rule that is real should clear the median in most periods. A rule
+# that wins on the whole window by carrying one blowout quarter is visible
+# here and nowhere else.
+#
+# Two of the rows are not entry rules at all. `hold to end` never sells, which
+# isolates stock SELECTION from the cost of trading. `wide stop` loosens the
+# stop to 20%. The random-fill control landed at the 29th percentile while
+# never-trading versions of the same picks sit at the 50th by construction --
+# roughly twenty percentile points that belong to the exit machinery, not the
+# signal. These rows measure that directly.
+ROBUSTNESS_CANDIDATES = (
+    # label, entry mode, threshold, stop, hold_forever
+    ("strength >=55 (live)", "strength", 55.0, None, False),
+    ("weakness <=34", "weakness", 34.0, None, False),
+    ("weakness <=38", "weakness", 38.0, None, False),
+    ("weakness <=42", "weakness", 42.0, None, False),
+    ("weakness <=45", "weakness", 45.0, None, False),
+    ("weakness <=50", "weakness", 50.0, None, False),
+    ("no signal (random fill)", "any", None, None, False),
+    ("weakness <=45, hold to end", "weakness", 45.0, None, True),
+    ("weakness <=45, 20% stop", "weakness", 45.0, 20.0, False),
+    ("strength >=55, hold to end", "strength", 55.0, None, True),
+)
+
+N_PERIODS = 4
+
+
+def run_period_robustness(series, sectors, days):
+    all_dates = sorted({d for h in series.values() for d, _ in h})
+    decision = all_dates[WARMUP_DAYS:]
+    if len(decision) < N_PERIODS * 40:
+        return {"error": "not enough decision days to split into periods"}
+
+    size = len(decision) // N_PERIODS
+    periods = []
+    for i in range(N_PERIODS):
+        d0 = decision[i * size]
+        d1 = decision[(i + 1) * size - 1] if i < N_PERIODS - 1 else decision[-1]
+        periods.append((d0, d1))
+
+    # One coin-flip distribution per period, so each column is scored against
+    # its own market rather than against the whole window's average.
+    bench = []
+    for d0, d1 in periods:
+        rb = random_portfolio_benchmark(series, d0, d1)
+        bench.append(rb if "error" in rb else rb)
+
+    rows = []
+    for label, mode, thr, stop, hold in ROBUSTNESS_CANDIDATES:
+        row = {"label": label, "mode": mode, "threshold": thr,
+               "stop_pct": stop, "hold_forever": hold, "periods": []}
+        pcts = []
+        for i, (d0, d1) in enumerate(periods):
+            cell = {"from": d0, "to": d1}
+            try:
+                r = run_backtest(days=days, series=series, sectors=sectors,
+                                 verbose=False, vol_scaled=False,
+                                 date_from=d0, date_to=d1,
+                                 entry_mode=mode, entry_threshold=thr,
+                                 stop_pct=stop, hold_forever=hold)
+                cell["return_pct"] = r["total_return_pct"]
+                cell["trades"] = r["closed_trades"]
+                rb = bench[i]
+                if "error" not in rb:
+                    cell["percentile"] = bot_percentile(rb.get("_draws"), cell["return_pct"])
+                    if cell["percentile"] is not None:
+                        pcts.append(cell["percentile"])
+            except Exception as e:
+                cell["error"] = str(e)[:80]
+            row["periods"].append(cell)
+        if pcts:
+            row["avg_percentile"] = round(sum(pcts) / len(pcts), 1)
+            row["periods_above_median"] = sum(1 for p in pcts if p >= 50)
+            row["periods_scored"] = len(pcts)
+            row["worst_percentile"] = min(pcts)
+        rows.append(row)
+
+    return {
+        "periods": [{"from": d0, "to": d1,
+                     "random_median_pct": (bench[i] or {}).get("median_pct")}
+                    for i, (d0, d1) in enumerate(periods)],
+        "rows": rows,
+        "n_periods": N_PERIODS,
+    }
 
 
 # --- Walk-forward validation --------------------------------------------
@@ -932,6 +1033,12 @@ def run_and_save(days=730, sweep=True, universe=None, fetch=None):
             out["walk_forward"] = run_walk_forward(series, sectors, days=days)
         except Exception as e:
             out["walk_forward"] = {"error": str(e)[:160]}
+
+        # --- sub-period robustness (hardens or kills the weakness finding) --
+        try:
+            out["period_robustness"] = run_period_robustness(series, sectors, days=days)
+        except Exception as e:
+            out["period_robustness"] = {"error": str(e)[:160]}
     os.makedirs(os.path.dirname(RESULT_PATH), exist_ok=True)
     tmp = RESULT_PATH + ".tmp"
     with open(tmp, "w") as f:
