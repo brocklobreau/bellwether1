@@ -1034,6 +1034,66 @@ def backtest_tab_html(bt):
         else:
             rand_html = ""
 
+        # --- entry-signal experiments ------------------------------------
+        ents = [e for e in (wf.get("entry_experiments") or [])
+                if "error" not in e and e.get("test_return_pct") is not None]
+        entry_html = ""
+        if ents:
+            control = next((e for e in ents if e.get("mode") == "any"), None)
+            live_row_e = next((e for e in ents if "live" in e.get("label", "")), None)
+            best_e = max(ents, key=lambda e: e.get("test_percentile") or -1)
+            erows = "".join(
+                f"<tr{HILITE if e is best_e else ''}>"
+                f"<td class='mono'>{esc(e['label'])}"
+                f"{' &larr; best out-of-sample' if e is best_e else ''}</td>"
+                f"<td class='price-cell {'pnl-good' if (e.get('train_return_pct') or 0) >= 0 else 'pnl-bad'}'>"
+                f"{pct(e.get('train_return_pct'))}</td>"
+                f"<td class='price-cell {'pnl-good' if (e.get('test_return_pct') or 0) >= 0 else 'pnl-bad'}'>"
+                f"{pct(e.get('test_return_pct'))}</td>"
+                f"<td class='price-cell {'pnl-good' if (e.get('test_percentile') or 0) >= 50 else 'pnl-bad'}'>"
+                f"<b>{e.get('test_percentile')}th</b></td>"
+                f"<td class='price-cell mono'>{e.get('test_trades')}</td>"
+                f"<td class='price-cell mono'>{e.get('test_invested_pct')}%</td></tr>"
+                for e in ents)
+
+            cp = (control or {}).get("test_percentile")
+            lp = (live_row_e or {}).get("test_percentile")
+            if cp is None or lp is None:
+                enote = "Control or live row missing &mdash; read the table directly."
+            elif lp > cp + 10:
+                enote = (f"The live scoring rule ({lp}th percentile) beat the no-signal control "
+                         f"({cp}th) out-of-sample. The score is contributing something.")
+            elif lp < cp - 10:
+                enote = (f"The no-signal control ({cp}th percentile) beat the live scoring rule "
+                         f"({lp}th) out-of-sample &mdash; filling slots at random did better than "
+                         f"scoring them. On this evidence the entry score is subtracting value, and "
+                         f"holding more names beats picking better ones.")
+            else:
+                enote = (f"Live rule {lp}th vs no-signal control {cp}th percentile: too close to "
+                         f"separate. The scoring is not measurably better OR worse than choosing at "
+                         f"random, which is its own verdict &mdash; it is not earning the complexity.")
+
+            entry_html = f"""
+      <h2 class="section-title" style="margin-top:26px;">Entry signal &mdash; does the score help at all?</h2>
+      <p class="tab-blurb">Same split, same risk engine, same costs &mdash; only the BUY rule changes.
+        <b>strength</b> is the live rule (buy names already scoring high) at three different bars.
+        <b>weakness</b> is the identical score with the sign flipped (buy the worst-scoring names first) &mdash;
+        mean reversion instead of momentum. <b>no signal</b> fills the slots at random and is the honest
+        floor: any rule that cannot beat it is not paying for itself. The percentile column is each rule
+        against the same {(rb_all.get('test') or {}).get('trials', '')} coin-flip portfolios, on the
+        half none of them were chosen on.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Buy rule</th><th>Train</th><th>Test</th>
+            <th>Test percentile</th><th>Test trades</th><th>Invested</th></tr></thead>
+          <tbody>{erows}</tbody>
+        </table>
+      </div>
+      <div class="empty-note" style="margin-top:12px;">{enote}</div>
+      <p class="tab-blurb" style="margin-top:10px; opacity:.75">A flipped signal that looks brilliant is
+        the single easiest thing to curve-fit, so the train column is context, not evidence. Only the
+        test column and its percentile count &mdash; and one split is still one sample.</p>"""
+
         wf_html = f"""
     <section>
       <h2 class="section-title">Walk-forward &mdash; the only out-of-sample number here</h2>
@@ -1069,6 +1129,7 @@ def backtest_tab_html(bt):
         Half a window is also a small sample &mdash; this check is good at exposing overfitting, and
         weak at proving an edge exists.</p>
       {rand_html}
+      {entry_html}
     </section>"""
 
     ladders = [l for l in (bt.get("ratchet_sweep") or []) if "error" not in l]
