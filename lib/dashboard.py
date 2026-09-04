@@ -1132,6 +1132,58 @@ def backtest_tab_html(bt):
       {entry_html}
     </section>"""
 
+    st = bt.get("stress") or {}
+    stress_html = ""
+    if st.get("windows") and not st.get("error"):
+        blocks = ""
+        for w in st["windows"]:
+            if w.get("error"):
+                blocks += (f"<p class='tab-blurb' style='opacity:.7'><b>{esc(w['window'])}</b> &mdash; "
+                           f"not run: {esc(w['error'])}</p>")
+                continue
+            vrows = ""
+            for v in w.get("variants", []):
+                if "error" in v:
+                    vrows += (f"<tr><td class='mono'>{esc(v['label'])}</td>"
+                              f"<td colspan='5' class='empty-cell'>{esc(v['error'])}</td></tr>")
+                    continue
+                vrows += (f"<tr><td class='mono'>{esc(v['label'])}</td>"
+                          f"<td class='price-cell {'pnl-good' if (v.get('return_pct') or 0) >= 0 else 'pnl-bad'}'>"
+                          f"{pct(v.get('return_pct'))}</td>"
+                          f"<td class='price-cell pnl-bad'>{pct(v.get('max_dd_pct'))}</td>"
+                          f"<td class='price-cell mono'>{v.get('trades')}</td>"
+                          f"<td class='price-cell mono'>{v.get('hit_rate_pct')}%</td>"
+                          f"<td class='price-cell mono'>{v.get('avg_invested_pct')}%</td></tr>")
+            blocks += f"""
+      <h2 class="section-title" style="margin-top:22px;font-size:14px;">{esc(w['window'])}
+        <span style="font-weight:400;opacity:.6;font-size:11px">
+          {esc(w.get('from'))} &rarr; {esc(w.get('to'))} &middot; {w.get('sessions')} sessions &middot;
+          buy &amp; hold {pct(w.get('buy_hold_pct'))}</span></h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Variant</th><th>Return</th><th>Max DD</th><th>Trades</th>
+            <th>Win rate</th><th>Invested</th></tr></thead>
+          <tbody>{vrows}</tbody>
+        </table>
+      </div>"""
+
+        stress_html = f"""
+    <section>
+      <h2 class="section-title">Crash behaviour &mdash; real historical declines</h2>
+      <p class="tab-blurb">Every other number on this page comes from a window in which the market rose
+        about 33%, so none of them describe a crash and the &minus;14.5% max drawdown they report is not a
+        floor. These are real declines, same engine, same risk settings. <b>regime pause</b> stops opening
+        positions while the equal-weight universe is below its 200-day average; <b>regime exit</b> also
+        liquidates and waits in cash. Neither predicts anything &mdash; both react after a decline is
+        underway, so they exit well below the top and re-enter well above the bottom.</p>
+      <div class="empty-note" style="margin-bottom:6px;">Two caveats that make these numbers
+        <i>optimistic</i>, not pessimistic. The universe is today's large caps, so it carries survivorship
+        bias &mdash; the names that never recovered are not in it. And exits fill at the day's close, so
+        gap risk, the thing that actually does the damage when a stock opens below your stop, is not
+        modelled at all. Read this as a floor on the pain, not a forecast of it.</p>
+      {blocks}
+    </section>"""
+
     rob = bt.get("period_robustness") or {}
     rob_html = ""
     if rob.get("rows") and not rob.get("error"):
@@ -1381,6 +1433,8 @@ def backtest_tab_html(bt):
     {wf_html}
 
     {rob_html}
+
+    {stress_html}
 
     {ladder_html}
 
