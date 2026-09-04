@@ -939,6 +939,85 @@ def backtest_tab_html(bt):
     # Precomputed: an f-string expression part cannot contain a backslash,
     # and an inline style attribute needs escaped quotes. (Third time.)
     HILITE = ' style="background:var(--surface-2)"'
+
+    wf = bt.get("walk_forward") or {}
+    wf_html = ""
+    if wf and not wf.get("error") and wf.get("rows"):
+        rows = [r for r in wf["rows"]
+                if r.get("train_return_pct") is not None and r.get("test_return_pct") is not None]
+        rows.sort(key=lambda r: -r["train_return_pct"])
+        picked = wf.get("picked_on_train")
+        wrows = "".join(
+            f"<tr{HILITE if r['label'] == picked else ''}>"
+            f"<td class='mono'>{esc(r['label'])}"
+            f"{' &larr; picked on train' if r['label'] == picked else ''}</td>"
+            f"<td class='price-cell {'pnl-good' if r['train_return_pct'] >= 0 else 'pnl-bad'}'>"
+            f"{pct(r['train_return_pct'])}</td>"
+            f"<td class='price-cell {'pnl-good' if r['test_return_pct'] >= 0 else 'pnl-bad'}'>"
+            f"{pct(r['test_return_pct'])}</td>"
+            f"<td class='price-cell mono'>{r.get('train_trades')}</td>"
+            f"<td class='price-cell mono'>{r.get('test_trades')}</td></tr>"
+            for r in rows)
+
+        rho = wf.get("rank_correlation")
+        rank = wf.get("picked_rank_on_test")
+        n = wf.get("candidates")
+        edge = wf.get("edge_vs_random_pick_pct")
+        if rho is None:
+            verdict = "Rank correlation could not be computed."
+        elif rho >= 0.5:
+            verdict = (f"Rank correlation {rho}. Choosing on the first half carried real "
+                       f"information into the second &mdash; the tuning is doing something.")
+        elif rho > 0.15:
+            verdict = (f"Rank correlation {rho}: weak. Some signal, but a settings choice made on "
+                       f"the first half only loosely predicts the second. Treat small gaps between "
+                       f"variants as noise.")
+        elif rho >= -0.15:
+            verdict = (f"Rank correlation {rho}: essentially zero. Ranking settings on one stretch "
+                       f"tells you almost nothing about the next one. The in-sample tables above are "
+                       f"measuring the window, not the strategy &mdash; prefer the simplest setting "
+                       f"over the highest-scoring one.")
+        else:
+            verdict = (f"Rank correlation {rho}: NEGATIVE. Picking the in-sample winner did worse "
+                       f"than picking at random. Any setting chosen off the tables above is likely "
+                       f"to be the wrong one.")
+
+        wf_html = f"""
+    <section>
+      <h2 class="section-title">Walk-forward &mdash; the only out-of-sample number here</h2>
+      <p class="tab-blurb">Every other table on this page picks its winner and measures it on the same
+        two years, so the winner's margin is partly just the best draw out of many. This splits the
+        window: each candidate is ranked on the first half (<b>train</b>), then run on the second half
+        (<b>test</b>), which had no say in the choice. The question is not which row is highest &mdash;
+        it is whether being highest on train predicts anything at all on test.</p>
+      <div class="bot-stat-grid">
+        <div class="bot-stat"><span class="bot-stat-num">{pct(wf.get('picked_test_return_pct'))}</span>
+          <span class="bot-stat-label">train winner, out-of-sample</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{rank}/{n}</span>
+          <span class="bot-stat-label">its rank on test</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{pct(wf.get('avg_test_return_pct'))}</span>
+          <span class="bot-stat-label">avg candidate on test</span></div>
+        <div class="bot-stat"><span class="bot-stat-num {'pnl-good' if (edge or 0) >= 0 else 'pnl-bad'}">{pct(edge)}</span>
+          <span class="bot-stat-label">edge from tuning vs random pick</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{rho}</span>
+          <span class="bot-stat-label">train&rarr;test rank correlation</span></div>
+      </div>
+      <div class="empty-note" style="margin-top:12px;">{verdict}</div>
+      <div class="table-scroll" style="margin-top:14px;">
+        <table>
+          <thead><tr><th>Candidate</th>
+            <th>Train ({esc(wf['train_window']['from'])} &rarr; {esc(wf['train_window']['to'])})</th>
+            <th>Test ({esc(wf['test_window']['from'])} &rarr; {esc(wf['test_window']['to'])})</th>
+            <th>Train trades</th><th>Test trades</th></tr></thead>
+          <tbody>{wrows}</tbody>
+        </table>
+      </div>
+      <p class="tab-blurb" style="margin-top:10px; opacity:.75">Each half starts fresh at the same
+        starting equity, so the two columns are independent runs rather than one compounding sequence.
+        Half a window is also a small sample &mdash; this check is good at exposing overfitting, and
+        weak at proving an edge exists.</p>
+    </section>"""
+
     ladders = [l for l in (bt.get("ratchet_sweep") or []) if "error" not in l]
     ladder_html = ""
     if ladders:
@@ -1103,6 +1182,8 @@ def backtest_tab_html(bt):
     {deploy_html}
 
     {give_html}
+
+    {wf_html}
 
     {ladder_html}
 
