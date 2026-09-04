@@ -780,7 +780,7 @@ def run():
                             # result does not change any exit rule, so without
                             # this the cache keeps serving a result that simply
                             # lacks the new field.
-                            "result_schema": 2,
+                            "result_schema": 4,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
@@ -803,6 +803,40 @@ def run():
                     f"(excess {res['excess_vs_benchmark_pct']:+.2f}), "
                     f"{res['closed_trades']} trades, hit {res['hit_rate_pct']}%, "
                     f"R:R {res['realized_rr']}, maxDD {res['max_drawdown_pct']}%")
+                dep = res.get("deployment") or {}
+                if dep:
+                    log(f"  deployment: avg {dep['avg_invested_pct']}% invested "
+                        f"(median {dep['median_invested_pct']}%), "
+                        f"avg {dep['avg_open_positions']}/{dep['max_positions_cap']} slots, "
+                        f"at cap {dep['pct_sessions_at_cap']}% of sessions, "
+                        f"under half {dep['pct_sessions_under_half']}%")
+                    b = dep.get("blocked") or {}
+                    log(f"  entry blockers: entered {b.get('entered')}, "
+                        f"slots-full {b.get('slots_full')}, "
+                        f"sector-cap {b.get('sector_cap')}, "
+                        f"size-reject {b.get('size_reject')}, "
+                        f"no-candidate sessions {b.get('no_candidate_day')}, "
+                        f"avg candidates/session {dep.get('avg_candidates_per_session')}")
+                    if dep.get("size_reject_reasons"):
+                        log(f"  size-reject reasons: {dep['size_reject_reasons']}")
+                gb = res.get("giveback") or {}
+                if gb.get("trades_measured"):
+                    log(f"  giveback: avg {gb['avg_giveback_pct']}%/trade "
+                        f"(winners {gb['avg_giveback_winners_pct']}%, "
+                        f"losers {gb['avg_giveback_losers_pct']}%), "
+                        f"${gb['total_giveback_dollars']:,.0f} total")
+                    for g in gb.get("green_then_red", []):
+                        log(f"    green->red, was up >={g['threshold_pct']:.0f}%: "
+                            f"{g['trades']} trades ({g['pct_of_all_losers']}% of losers), "
+                            f"avg peak {g['avg_peak_pct']}%, ${g['giveback_dollars']:,.0f}")
+                for l in res.get("ratchet_sweep", []):
+                    if "error" in l:
+                        log(f"  ladder {l['label']}: ERROR {l['error']}")
+                        continue
+                    log(f"  ladder {l['label']}: {l['return_pct']:+.2f}%, "
+                        f"maxDD {l['max_dd_pct']:.1f}%, {l['trades']} trades, "
+                        f"hit {l['hit_rate_pct']}%, R:R {l['realized_rr']}, "
+                        f"green->red@5 {l['green_then_red_5']}")
                 for v in res.get("sensitivity", []):
                     if "error" not in v:
                         log(f"  backtest variant {v['stop_pct']}/{v['target_pct']} "

@@ -133,6 +133,23 @@ COST_PER_SIDE_PCT = 0.05
 # range. Both approaches are in the same sweep on purpose: volatility scaling
 # is a well-reasoned hypothesis, not a proven improvement, and the only way
 # to know is to run it against the fixed levels on identical data.
+# Ladders to test against the live one. Each entry is (label, fractions of the
+# position's target): (gain reached, gain the stop locks in), highest rung
+# first. The live ladder only starts protecting at 35% of target -- +8.75% on a
+# 25% target -- so anything that runs to +8% and rolls over is unprotected all
+# the way back down to the -10% stop. These variants push protection earlier by
+# different amounts; the tradeoff they buy is being stopped out of trades that
+# would have recovered, which is exactly what has to be measured rather than
+# argued about.
+RATCHET_LADDERS = (
+    ("live: 80/50 60/30 35/0", ((0.80, 0.50), (0.60, 0.30), (0.35, 0.00))),
+    ("earlier breakeven (+20% rung)", ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.20, 0.00))),
+    ("tight: protect from 20%", ((0.80, 0.60), (0.60, 0.40), (0.40, 0.20), (0.20, 0.05))),
+    ("very tight: 4 close rungs", ((0.70, 0.55), (0.50, 0.35), (0.30, 0.15), (0.15, 0.05))),
+    ("loose: two rungs only", ((0.80, 0.40), (0.50, 0.00))),
+    ("no ratchet at all", ()),
+)
+
 SWEEP_VARIANTS = (
     (10, 25, True), (10, 25, False),          # the head-to-head that matters
     (8, 24, False), (12, 24, False), (10, 20, False), (10, 30, False),
@@ -153,7 +170,7 @@ def fetch_history(symbol, start, end):
     return out
 
 
-def _exit_reason(pos, price, tech_score):
+def _exit_reason(pos, price, tech_score, fractions=None):
     """Identical rule set to lib.bot.check_exit, expressed against a daily
     bar -- including the ratcheted stop and the rule that a working trade is
     governed by price, not by thesis drift. Kept in lockstep deliberately:
@@ -162,8 +179,18 @@ def _exit_reason(pos, price, tech_score):
     pnl = (price - entry) / entry * 100.0
     pos["peak_pct"] = max(pos.get("peak_pct", 0.0), pnl)
 
-    # Ratchet through rungs derived from THIS position's own target.
-    for reached, lock_at in (ratchet_rungs(pos.get("target_pct")) or RATCHET_STEPS):
+    # Ratchet through rungs derived from THIS position's own target. When a
+    # ladder is supplied the rungs come from it instead, so the sweep can ask
+    # whether a different ladder protects gains better -- the one question
+    # post-hoc analysis of closed trades genuinely cannot answer, because an
+    # earlier exit changes every trade that comes after it.
+    if fractions is not None:
+        tgt = pos.get("target_pct") or 0.0
+        rungs = tuple((round(tgt * hit, 2), round(tgt * lock, 2))
+                      for hit, lock in fractions)
+    else:
+        rungs = ratchet_rungs(pos.get("target_pct")) or RATCHET_STEPS
+    for reached, lock_at in rungs:
         if pos["peak_pct"] >= reached:
             new_stop = entry * (1 + lock_at / 100.0)
             if new_stop > pos["stop"]:
@@ -216,7 +243,7 @@ def load_series(days=730, universe=None, fetch=None, verbose=True):
 
 def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  fetch=None, verbose=True, series=None, sectors=None,
-                 vol_scaled=False):
+                 vol_scaled=False, ratchet_fractions=None):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
@@ -241,6 +268,17 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
     closed = []
     curve = []
 
+    # Deployment diagnostics. The headline return says nothing about whether
+    # the account was actually invested while it earned it -- a strategy that
+    # makes 12% while 60% in cash is a different animal from one that makes 12%
+    # fully invested, and the fix for each is the opposite of the other's.
+    deploy_pcts = []
+    open_counts = []
+    cand_counts = []
+    blockers = {"no_candidate_day": 0, "slots_full": 0, "sector_cap": 0,
+                "size_reject": 0, "entered": 0}
+    size_reject_reasons = {}
+
     for day in test_dates:
         # --- price + point-in-time technicals for this day only ---
         today = {}
@@ -261,7 +299,7 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             pos = positions[sym]
             pnl = (price - pos["entry_price"]) / pos["entry_price"] * 100.0
             pos["peak_pct"] = max(pos["peak_pct"], pnl)
-            reason = _exit_reason(pos, price, tscore)
+            reason = _exit_reason(pos, price, tscore, fractions=ratchet_fractions)
             if reason:
                 fill = price * (1 - COST_PER_SIDE_PCT / 100.0)   # sells fill lower
                 cash += pos["shares"] * fill
@@ -294,12 +332,20 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                 continue
             cands.append((tscore, sym, price, vol))
         cands.sort(reverse=True)
+        cand_counts.append(len(cands))
+        if not cands:
+            blockers["no_candidate_day"] += 1
 
-        for tscore, sym, price, vol in cands:
+        for ci, (tscore, sym, price, vol) in enumerate(cands):
             if len(positions) >= MAX_POSITIONS:
+                # Everything still in the queue was blocked by the slot cap,
+                # not by its own quality -- count them all, or the cap looks
+                # far cheaper than it is.
+                blockers["slots_full"] += len(cands) - ci
                 break
             sec = sectors[sym]
             if sector_counts.get(sec, 0) >= MAX_PER_SECTOR:
+                blockers["sector_cap"] += 1
                 continue
             fill = price * (1 + COST_PER_SIDE_PCT / 100.0)      # buys fill higher
             # vol_scaled: size the levels to this stock's own daily range,
@@ -312,7 +358,10 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             stop = fill * (1 - s_pct / 100.0)
             shares, risk_dollars, reject = size_position(equity, cash, fill, stop)
             if reject:
+                blockers["size_reject"] += 1
+                size_reject_reasons[reject] = size_reject_reasons.get(reject, 0) + 1
                 continue
+            blockers["entered"] += 1
             cash -= shares * fill
             positions[sym] = {
                 "shares": shares, "entry_price": fill, "entry_date": day,
@@ -322,8 +371,11 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             }
             sector_counts[sec] = sector_counts.get(sec, 0) + 1
 
-        equity = cash + sum(p["shares"] * p["last"] for p in positions.values())
+        invested = sum(p["shares"] * p["last"] for p in positions.values())
+        equity = cash + invested
         curve.append({"date": day, "equity": round(equity, 2)})
+        deploy_pcts.append(100.0 * invested / equity if equity > 0 else 0.0)
+        open_counts.append(len(positions))
 
     # --- benchmark: equal-weight buy & hold, same universe, same window ---
     first_day, last_day = test_dates[0], test_dates[-1]
@@ -336,13 +388,33 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             rets.append((sell / buy - 1) * 100)
     benchmark_pct = round(sum(rets) / len(rets), 2) if rets else None
 
+    n = len(deploy_pcts) or 1
+    srt = sorted(deploy_pcts)
+    deployment = {
+        "avg_invested_pct": round(sum(deploy_pcts) / n, 1),
+        "median_invested_pct": round(srt[n // 2], 1) if deploy_pcts else None,
+        "min_invested_pct": round(srt[0], 1) if deploy_pcts else None,
+        "max_invested_pct": round(srt[-1], 1) if deploy_pcts else None,
+        "avg_open_positions": round(sum(open_counts) / n, 1),
+        "max_positions_cap": MAX_POSITIONS,
+        "pct_sessions_at_cap": round(100.0 * sum(1 for c in open_counts
+                                                 if c >= MAX_POSITIONS) / n, 1),
+        "pct_sessions_under_half": round(100.0 * sum(1 for c in open_counts
+                                                     if c < MAX_POSITIONS / 2) / n, 1),
+        "avg_candidates_per_session": round(sum(cand_counts) / n, 1),
+        "sessions": n,
+        "blocked": blockers,
+        "size_reject_reasons": size_reject_reasons,
+    }
     return _summarize(curve, closed, positions, cash, benchmark_pct,
                       first_day, last_day, stop_pct, target_pct, len(series),
-                      days=days, vol_scaled=vol_scaled)
+                      days=days, vol_scaled=vol_scaled, deployment=deployment,
+                      ratchet_fractions=ratchet_fractions)
 
 
 def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_day,
-               stop_pct, target_pct, universe_size, days=None, vol_scaled=True):
+               stop_pct, target_pct, universe_size, days=None, vol_scaled=True,
+               deployment=None, ratchet_fractions=None):
     final = curve[-1]["equity"] if curve else STARTING_EQUITY
     total_return = round((final / STARTING_EQUITY - 1) * 100, 2)
 
@@ -390,9 +462,60 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
             "sessions": len(pts),
         })
 
+    # --- Giveback: the "we were green and gave it back" ledger ------------
+    # peak_pct is how far the trade ran in our favour before it closed, so
+    # peak - realized is exactly what was handed back. This is post-hoc on the
+    # trades that actually happened: it sizes the prize, it does NOT prove a
+    # tighter ladder would have captured it (an earlier exit changes every
+    # trade after it). The ratchet sweep is what tests that.
+    give = []
+    round_trips = []
+    for t in closed:
+        pk = t.get("peak_pct")
+        if pk is None:
+            continue
+        g = pk - t["pnl_pct"]
+        give.append(g)
+        cost = t["entry_price"] * t["shares"]
+        round_trips.append({
+            "peak_pct": pk, "pnl_pct": t["pnl_pct"], "giveback_pct": g,
+            "giveback_dollars": g / 100.0 * cost,
+            "red": t["pnl_pct"] <= 0,
+        })
+
+    def _were_green(threshold):
+        """Trades that ended red after having been up at least `threshold`."""
+        hits = [r for r in round_trips if r["red"] and r["peak_pct"] >= threshold]
+        return {
+            "threshold_pct": threshold,
+            "trades": len(hits),
+            "pct_of_all_losers": (round(100.0 * len(hits)
+                                        / max(1, sum(1 for r in round_trips if r["red"])), 1)),
+            "avg_peak_pct": round(sum(h["peak_pct"] for h in hits) / len(hits), 2) if hits else None,
+            "giveback_dollars": round(sum(h["giveback_dollars"] for h in hits), 2) if hits else 0.0,
+        }
+
+    winners = [r for r in round_trips if not r["red"]]
+    losers = [r for r in round_trips if r["red"]]
+    giveback = {
+        "trades_measured": len(round_trips),
+        "avg_giveback_pct": round(sum(give) / len(give), 2) if give else None,
+        "avg_giveback_winners_pct": (round(sum(r["giveback_pct"] for r in winners) / len(winners), 2)
+                                     if winners else None),
+        "avg_giveback_losers_pct": (round(sum(r["giveback_pct"] for r in losers) / len(losers), 2)
+                                    if losers else None),
+        "total_giveback_dollars": round(sum(r["giveback_dollars"] for r in round_trips), 2),
+        "green_then_red": [_were_green(x) for x in (2.0, 5.0, 8.0, 10.0, 15.0)],
+        "losers_total": len(losers),
+    }
+
     held = [t["held_days"] for t in closed]
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "deployment": deployment or {},
+        "giveback": giveback,
+        "ratchet_fractions": ([list(x) for x in ratchet_fractions]
+                              if ratchet_fractions is not None else None),
         "yearly": yearly,
         "window": {"from": first_day, "to": last_day, "universe_size": universe_size},
         "config": {"stop_pct": stop_pct, "target_pct": target_pct,
@@ -408,8 +531,9 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 2,
-                   "sweep_variants": [list(v) for v in SWEEP_VARIANTS]},
+                   "result_schema": 4,
+                   "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
+                   "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
         "total_return_pct": total_return,
         "benchmark_buy_hold_pct": benchmark_pct,
@@ -464,6 +588,31 @@ def run_and_save(days=730, sweep=True, universe=None, fetch=None):
                 variants.append({"stop_pct": stop, "target_pct": target, "vol_scaled": vs,
                                  "error": str(e)[:120]})
         out["sensitivity"] = variants
+
+        # --- ratchet ladder sweep, at the live stop/target -----------------
+        ladders = []
+        for label, fracs in RATCHET_LADDERS:
+            try:
+                r = run_backtest(days=days, series=series, sectors=sectors,
+                                 verbose=False, vol_scaled=False,
+                                 ratchet_fractions=fracs)
+                gb = r.get("giveback") or {}
+                ladders.append({
+                    "label": label,
+                    "fractions": [list(x) for x in fracs],
+                    "return_pct": r["total_return_pct"],
+                    "max_dd_pct": r["max_drawdown_pct"],
+                    "trades": r["closed_trades"],
+                    "hit_rate_pct": r["hit_rate_pct"],
+                    "realized_rr": r["realized_rr"],
+                    "avg_giveback_pct": gb.get("avg_giveback_pct"),
+                    "green_then_red_5": next((g["trades"] for g in gb.get("green_then_red", [])
+                                              if g["threshold_pct"] == 5.0), None),
+                    "exit_reasons": r.get("exit_reasons") or {},
+                })
+            except Exception as e:
+                ladders.append({"label": label, "error": str(e)[:120]})
+        out["ratchet_sweep"] = ladders
     os.makedirs(os.path.dirname(RESULT_PATH), exist_ok=True)
     tmp = RESULT_PATH + ".tmp"
     with open(tmp, "w") as f:
