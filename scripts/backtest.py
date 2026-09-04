@@ -254,12 +254,14 @@ def load_series(days=730, universe=None, fetch=None, verbose=True):
 def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  fetch=None, verbose=True, series=None, sectors=None,
                  vol_scaled=False, ratchet_fractions=None,
-                 date_from=None, date_to=None):
+                 date_from=None, date_to=None,
+                 entry_mode="strength", entry_threshold=None):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
     stop_pct = INVEST_STOP_PCT if stop_pct is None else stop_pct
     target_pct = INVEST_TARGET_PCT if target_pct is None else target_pct
+    entry_threshold = TECH_ENTRY_MIN if entry_threshold is None else entry_threshold
 
     if series is None:
         series, sectors = load_series(days=days, universe=universe,
@@ -347,10 +349,30 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
 
         cands = []
         for sym, (price, tscore, vol) in today.items():
-            if sym in positions or tscore is None or tscore < TECH_ENTRY_MIN:
+            if sym in positions or tscore is None:
                 continue
+            if entry_mode == "strength":
+                # The live rule: only names already scoring well, best first.
+                if tscore < entry_threshold:
+                    continue
+            elif entry_mode == "weakness":
+                # Mean reversion: only names scoring badly, WORST first. The
+                # sign of the signal is flipped, nothing else.
+                if tscore > entry_threshold:
+                    continue
+            elif entry_mode == "any":
+                pass          # no signal at all -- the control
             cands.append((tscore, sym, price, vol))
-        cands.sort(reverse=True)
+
+        if entry_mode == "weakness":
+            cands.sort()                       # lowest score first
+        elif entry_mode == "any":
+            # No signal means no ordering. Shuffle deterministically off the
+            # date so the control is reproducible and carries no alphabetical
+            # or score-based bias.
+            random.Random(day).shuffle(cands)
+        else:
+            cands.sort(reverse=True)           # highest score first
         cand_counts.append(len(cands))
         if not cands:
             blockers["no_candidate_day"] += 1
@@ -550,7 +572,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 7,
+                   "result_schema": 8,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -654,20 +676,77 @@ def bot_percentile(draws, bot_return_pct):
 #
 # A negative correlation is worse than useless: it means picking the best
 # in-sample is actively worse than picking at random.
+# Trimmed 2026-09-04. The first walk-forward run settled the exit question:
+# rank correlation 0.036-0.118, edge from tuning -0.1%. Keeping eleven exit
+# variants alive just burns runtime re-proving that exits are noise. Four
+# representatives are enough to keep that finding visible; the budget belongs
+# to the entry experiments below, which is where the measured damage is.
 WALK_FORWARD_CANDIDATES = (
     # label, stop, target, ratchet fractions (None = live ladder)
     ("10/25 live ladder", 10.0, 25.0, None),
     ("10/25 no ratchet", 10.0, 25.0, ()),
-    ("10/25 loose ladder", 10.0, 25.0, ((0.80, 0.40), (0.50, 0.00))),
-    ("10/25 breakeven +5%", 10.0, 25.0, ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.20, 0.00))),
-    ("10/25 breakeven +2%", 10.0, 25.0, ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.08, 0.00))),
-    ("10/25 tight ladder", 10.0, 25.0, ((0.80, 0.60), (0.60, 0.40), (0.40, 0.20), (0.20, 0.05))),
     ("10/20", 10.0, 20.0, None),
     ("10/30", 10.0, 30.0, None),
-    ("8/24", 8.0, 24.0, None),
-    ("2.5/5", 2.5, 5.0, None),
-    ("10/10", 10.0, 10.0, None),
 )
+
+
+# --- Entry-signal experiments --------------------------------------------
+#
+# The random-portfolio benchmark put the live bot at the 8.4th percentile
+# out-of-sample: 500 coin-flip 10-name portfolios from the same universe beat
+# it more than nine times in ten, and that is AFTER accounting for costs and
+# cash drag (~7pts of the ~12pt gap is selection and timing alone). So the
+# entry rule is not merely weak, it is worse than no rule.
+#
+# Three hypotheses, tested side by side on the same train/test split:
+#   strength  -- the live rule (buy names already scoring high). Sweeping the
+#                threshold asks whether the bar is simply in the wrong place.
+#   weakness  -- the same score with the SIGN FLIPPED (buy the worst-scoring
+#                names, worst first). If momentum is what is hurting, its
+#                inverse should help. This is exactly the kind of idea that
+#                curve-fits beautifully in-sample, which is why the test-half
+#                column and the random-portfolio percentile are the only
+#                numbers here worth reading.
+#   any       -- no signal at all: fill the slots at random, run the same risk
+#                engine. This is the honest floor. If the scored variants
+#                cannot beat it, the scoring is subtracting value and the
+#                right answer is to stop picking.
+ENTRY_EXPERIMENTS = (
+    ("strength >=45", "strength", 45.0),
+    ("strength >=55 (live)", "strength", 55.0),
+    ("strength >=62", "strength", 62.0),
+    ("weakness <=45", "weakness", 45.0),
+    ("weakness <=38", "weakness", 38.0),
+    ("no signal (random fill)", "any", None),
+)
+
+
+def run_entry_experiments(series, sectors, days, train, test, randbench):
+    """Same split, same risk engine, only the BUY rule changes."""
+    rows = []
+    for label, mode, thr in ENTRY_EXPERIMENTS:
+        row = {"label": label, "mode": mode, "threshold": thr}
+        for phase, (d0, d1) in (("train", train), ("test", test)):
+            try:
+                r = run_backtest(days=days, series=series, sectors=sectors,
+                                 verbose=False, vol_scaled=False,
+                                 date_from=d0, date_to=d1,
+                                 entry_mode=mode, entry_threshold=thr)
+                row[f"{phase}_return_pct"] = r["total_return_pct"]
+                row[f"{phase}_trades"] = r["closed_trades"]
+                row[f"{phase}_hit_pct"] = r["hit_rate_pct"]
+                dep = r.get("deployment") or {}
+                row[f"{phase}_invested_pct"] = dep.get("avg_invested_pct")
+            except Exception as e:
+                row[f"{phase}_error"] = str(e)[:100]
+        # The number that decides it: did this rule beat coin-flip portfolios
+        # of the same size, on the half it was not chosen on?
+        draws = (randbench or {}).get("test_draws")
+        row["test_percentile"] = bot_percentile(draws, row.get("test_return_pct"))
+        rows.append(row)
+    return rows
+
+
 
 
 def _spearman(a, b):
@@ -747,18 +826,28 @@ def run_walk_forward(series, sectors, days=730):
 
     # Same-concentration, zero-skill yardstick for each window.
     randbench = {}
+    kept_draws = {}
     live_row = next((r for r in graded if r["label"] == "10/25 live ladder"), None)
     for phase, (d0, d1) in (("train", train), ("test", test)):
         rb = random_portfolio_benchmark(series, d0, d1)
         if "error" not in rb:
             draws = rb.pop("_draws")
+            kept_draws[phase + "_draws"] = draws
             rb["bot_return_pct"] = (live_row or {}).get(f"{phase}_return_pct")
             rb["bot_percentile"] = bot_percentile(draws, rb["bot_return_pct"])
             rb["picked_return_pct"] = picked.get(f"{phase}_return_pct")
             rb["picked_percentile"] = bot_percentile(draws, rb["picked_return_pct"])
         randbench[phase] = rb
 
+    # Entry-signal experiments share this split and this yardstick, so a
+    # comparison across them is apples to apples.
+    try:
+        entry_rows = run_entry_experiments(series, sectors, days, train, test, kept_draws)
+    except Exception as e:
+        entry_rows = [{"label": "entry experiments failed", "error": str(e)[:140]}]
+
     return {
+        "entry_experiments": entry_rows,
         "random_benchmark": randbench,
         "train_window": {"from": train[0], "to": train[1]},
         "test_window": {"from": test[0], "to": test[1]},
