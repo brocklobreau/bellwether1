@@ -780,7 +780,7 @@ def run():
                             # result does not change any exit rule, so without
                             # this the cache keeps serving a result that simply
                             # lacks the new field.
-                            "result_schema": 9,
+                            "result_schema": 10,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
@@ -863,6 +863,25 @@ def run():
                     for r in wf.get("rows", []):
                         log(f"      {r['label']:<24} train {str(r.get('train_return_pct')):>7} "
                             f"test {str(r.get('test_return_pct')):>7}")
+                st = res.get("stress") or {}
+                if st.get("error"):
+                    log(f"  stress: FAILED -- {st['error']}")
+                elif st.get("windows"):
+                    log(f"  stress tests ({st.get('universe_size')} tickers, "
+                        f"{st.get('history_days')}d history):")
+                    for w in st["windows"]:
+                        if w.get("error"):
+                            log(f"    {w['window']}: not run -- {w['error']}")
+                            continue
+                        log(f"    {w['window']} {w['from']}..{w['to']} "
+                            f"({w['sessions']} sessions, buy&hold {w.get('buy_hold_pct')}%)")
+                        for v in w.get("variants", []):
+                            if "error" in v:
+                                log(f"      {v['label']}: ERROR {v['error']}")
+                                continue
+                            log(f"      {v['label']:<26} ret {v['return_pct']:>7.2f}% "
+                                f"maxDD {v['max_dd_pct']:>7.2f}% trades {v['trades']:>3} "
+                                f"invested {v['avg_invested_pct']}%")
                 rob = res.get("period_robustness") or {}
                 if rob.get("error"):
                     log(f"  robustness: FAILED -- {rob['error']}")

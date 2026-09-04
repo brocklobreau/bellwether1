@@ -256,7 +256,7 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  vol_scaled=False, ratchet_fractions=None,
                  date_from=None, date_to=None,
                  entry_mode="strength", entry_threshold=None,
-                 hold_forever=False):
+                 hold_forever=False, regime_mode=None):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
@@ -273,6 +273,10 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
     # A single shared calendar: every date any ticker traded on.
     all_dates = sorted({d for h in series.values() for d, _ in h})
     idx = {sym: {d: i for i, (d, _) in enumerate(h)} for sym, h in series.items()}
+    # regime_mode: None = ignore the market entirely (current live behaviour),
+    # "pause" = stop opening new positions while the index is below its 200d,
+    # "exit"  = also liquidate everything and sit in cash until it recovers.
+    regime = build_regime(series, all_dates) if regime_mode else {}
     test_dates = all_dates[WARMUP_DAYS:]
     # Restricting the DECISION window (not the history) is what makes
     # walk-forward possible: every ticker still carries its full price
@@ -324,8 +328,12 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             # hold_forever isolates SELECTION from the cost of trading: same
             # picks, same sizing, but nothing is ever sold. Whatever the gap
             # to this row is, the exit machinery is responsible for.
-            reason = (None if hold_forever
-                      else _exit_reason(pos, price, tscore, fractions=ratchet_fractions))
+            if regime_mode == "exit" and not regime.get(day, True):
+                reason = "regime"          # market below its 200d: go to cash
+            elif hold_forever:
+                reason = None
+            else:
+                reason = _exit_reason(pos, price, tscore, fractions=ratchet_fractions)
             if reason:
                 fill = price * (1 - COST_PER_SIDE_PCT / 100.0)   # sells fill lower
                 cash += pos["shares"] * fill
@@ -353,7 +361,10 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
             sector_counts[sectors[s]] = sector_counts.get(sectors[s], 0) + 1
 
         cands = []
+        risk_on = regime.get(day, True) if regime_mode else True
         for sym, (price, tscore, vol) in today.items():
+            if not risk_on:
+                break                      # no new positions while risk-off
             if sym in positions or tscore is None:
                 continue
             if entry_mode == "strength":
@@ -577,7 +588,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 9,
+                   "result_schema": 10,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -660,6 +671,153 @@ def bot_percentile(draws, bot_return_pct):
     if not draws or bot_return_pct is None:
         return None
     return round(100.0 * sum(1 for d in draws if d < bot_return_pct) / len(draws), 1)
+
+
+# --- Market regime filter -------------------------------------------------
+#
+# The bot has no concept of "the market is falling, stop buying". It is
+# long-only, ~87% invested, and every measurement so far comes from a window
+# where the market rose 33%, so its -14.5% max drawdown describes good
+# weather and nothing else.
+#
+# This is the standard mechanical answer, and it is worth being precise about
+# what it is NOT: it does not predict anything. It reacts after a decline is
+# already underway. You exit well below the top and re-enter well above the
+# bottom. What it buys is truncation of the tail -- and what it costs is
+# whipsaw, because it will pull you out of every false alarm too. Whether
+# that trade is worth taking is exactly what the stress windows below
+# measure, rather than something to argue about.
+#
+# The index is the universe itself, equal-weighted, so no extra data source is
+# needed and it stays point-in-time: level on day D uses only prices up to D.
+REGIME_MA_DAYS = 200
+
+
+def build_regime(series, all_dates):
+    """date -> True when the equal-weight universe index is above its 200-day
+    moving average ('risk on'). Uses only trailing data at every point."""
+    # Flatten to date->price per ticker once; a per-date scan of every series
+    # is O(dates x bars) and takes minutes on a 7-year pull.
+    prices = {sym: {d: c for d, c in h} for sym, h in series.items()}
+    base = {}
+    levels = []
+    idx_by_date = {}
+    for d in all_dates:
+        vals = []
+        for sym, pmap in prices.items():
+            px = pmap.get(d)
+            if px is None:
+                continue
+            if sym not in base:
+                base[sym] = px
+            vals.append(px / base[sym])
+        if not vals:
+            continue
+        levels.append(sum(vals) / len(vals))
+        idx_by_date[d] = len(levels) - 1
+
+    regime = {}
+    for d, i in idx_by_date.items():
+        if i + 1 < REGIME_MA_DAYS:
+            regime[d] = True                      # not enough history: assume risk-on
+            continue
+        window = levels[i + 1 - REGIME_MA_DAYS:i + 1]
+        regime[d] = levels[i] > (sum(window) / len(window))
+    return regime
+
+
+# --- Stress windows -------------------------------------------------------
+#
+# Everything else here is measured on Sep-2024..Sep-2026, in which the market
+# rose ~33%. That window contains no crash, so it says nothing whatsoever
+# about crash behaviour -- and the -14.5% max drawdown it reports should not
+# be read as a floor.
+#
+# These are real declines with real prices. Caveats worth stating rather than
+# burying: the universe is TODAY'S large caps, so it carries survivorship bias
+# (the names that blew up are not in it) and results here are optimistic on
+# that count alone. Exits fill at the day's close, so gap risk -- the thing
+# that actually hurts in a crash, when a stock opens below your stop -- is not
+# modelled at all. Treat these numbers as a floor on the pain, not a forecast
+# of it.
+STRESS_WINDOWS = (
+    ("COVID crash + recovery", "2020-01-02", "2020-12-31"),
+    ("2022 bear market", "2022-01-03", "2022-12-30"),
+    ("2018 Q4 selloff", "2018-09-04", "2019-06-28"),
+)
+
+STRESS_VARIANTS = (
+    # label, entry mode, threshold, regime mode
+    ("live: strength >=55", "strength", 55.0, None),
+    ("strength + regime pause", "strength", 55.0, "pause"),
+    ("strength + regime exit", "strength", 55.0, "exit"),
+    ("weakness <=45", "weakness", 45.0, None),
+    ("weakness + regime exit", "weakness", 45.0, "exit"),
+)
+
+# 2600 left only 48 warmup days before the 2018 window, so it was skipped.
+# load_series reaches back days + WARMUP_DAYS*1.5, so this needs to cover the
+# earliest window PLUS 260 sessions of history before it.
+STRESS_HISTORY_DAYS = 3000
+
+
+def run_stress_tests(universe=None, fetch=None, verbose=True):
+    """Same engine, same risk settings, real historical declines."""
+    series, sectors = load_series(days=STRESS_HISTORY_DAYS, universe=universe,
+                                  fetch=fetch, verbose=verbose)
+    if not series:
+        return {"error": "no history fetched for stress windows"}
+
+    all_dates = sorted({d for h in series.values() for d, _ in h})
+    out = []
+    for wname, d0, d1 in STRESS_WINDOWS:
+        # Skip a window the data does not actually cover, rather than
+        # reporting a truncated one as if it were the real thing.
+        covered = [d for d in all_dates if d0 <= d <= d1]
+        if len(covered) < 60:
+            out.append({"window": wname, "from": d0, "to": d1,
+                        "error": f"only {len(covered)} trading days available"})
+            continue
+        warm = [d for d in all_dates if d < d0]
+        if len(warm) < WARMUP_DAYS:
+            out.append({"window": wname, "from": d0, "to": d1,
+                        "error": f"only {len(warm)} warmup days before window"})
+            continue
+
+        entry = {"window": wname, "from": covered[0], "to": covered[-1],
+                 "sessions": len(covered), "variants": []}
+
+        # Buy-and-hold of the universe through the same window, for scale.
+        rets = []
+        pmap = {sym: {d: c for d, c in h} for sym, h in series.items()}
+        for sym, m in pmap.items():
+            a, b = m.get(covered[0]), m.get(covered[-1])
+            if a and b:
+                rets.append((b * (1 - COST_PER_SIDE_PCT / 100.0)
+                             / (a * (1 + COST_PER_SIDE_PCT / 100.0)) - 1) * 100)
+        entry["buy_hold_pct"] = round(sum(rets) / len(rets), 2) if rets else None
+
+        for label, mode, thr, regime in STRESS_VARIANTS:
+            try:
+                r = run_backtest(days=STRESS_HISTORY_DAYS, series=series,
+                                 sectors=sectors, verbose=False, vol_scaled=False,
+                                 date_from=d0, date_to=d1,
+                                 entry_mode=mode, entry_threshold=thr,
+                                 regime_mode=regime)
+                dep = r.get("deployment") or {}
+                entry["variants"].append({
+                    "label": label, "regime": regime or "none",
+                    "return_pct": r["total_return_pct"],
+                    "max_dd_pct": r["max_drawdown_pct"],
+                    "trades": r["closed_trades"],
+                    "hit_rate_pct": r["hit_rate_pct"],
+                    "avg_invested_pct": dep.get("avg_invested_pct"),
+                })
+            except Exception as e:
+                entry["variants"].append({"label": label, "error": str(e)[:120]})
+        out.append(entry)
+    return {"windows": out, "history_days": STRESS_HISTORY_DAYS,
+            "universe_size": len(series)}
 
 
 # --- Sub-period robustness -----------------------------------------------
@@ -1039,6 +1197,13 @@ def run_and_save(days=730, sweep=True, universe=None, fetch=None):
             out["period_robustness"] = run_period_robustness(series, sectors, days=days)
         except Exception as e:
             out["period_robustness"] = {"error": str(e)[:160]}
+
+        # --- crash behaviour, on real declines ----------------------------
+        try:
+            out["stress"] = run_stress_tests(universe=universe, fetch=fetch,
+                                             verbose=False)
+        except Exception as e:
+            out["stress"] = {"error": str(e)[:160]}
     os.makedirs(os.path.dirname(RESULT_PATH), exist_ok=True)
     tmp = RESULT_PATH + ".tmp"
     with open(tmp, "w") as f:
