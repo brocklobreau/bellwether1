@@ -1649,11 +1649,16 @@ def day_trade_track_record_html():
         arrow = "▲" if direction == "long" else "▼"
         return f'<span class="pill" style="--pill-color:var(--{tone})">{arrow} {direction.upper()}</span>'
 
-    def ret_cell(ret, correct):
+    def ret_cell(ret, correct, status=None):
+        # An ungraded cell used to render as a bare dash, which reads as
+        # "broken" when in fact the horizon simply hasn't arrived. Say which.
+        if ret is None:
+            label = {"pending": "pending",
+                     "no_data": "no data"}.get(status, "—")
+            return (f'<td class="price-cell" style="color:var(--ink-faint);font-size:11px">{label}</td>'
+                    '<td class="price-cell"></td>')
         cls = "pnl-good" if correct is True else ("pnl-bad" if correct is False else "")
         icon = "✓" if correct is True else ("✗" if correct is False else "…")
-        if ret is None:
-            return '<td class="price-cell">—</td><td class="price-cell"></td>'
         return f'<td class="price-cell {cls}">{pct(ret)}</td><td class="price-cell {cls}">{icon}</td>'
 
     def call_row(c):
@@ -1663,8 +1668,8 @@ def day_trade_track_record_html():
         <td class="ticker-cell"><div class="ticker">{esc(c['ticker'])}</div><div class="company">{esc(c.get('name') or '')}</div></td>
         <td class="signal-cell">{dir_pill(c['direction'])}</td>
         <td class="price-cell">${c['start_price']:,.2f}</td>
-        {ret_cell(c.get('return_pct_1d'), c.get('correct_1d'))}
-        {ret_cell(c.get('return_pct_3d'), c.get('correct_3d'))}
+        {ret_cell(c.get('return_pct_1d'), c.get('correct_1d'), c.get('status_1d'))}
+        {ret_cell(c.get('return_pct_3d'), c.get('correct_3d'), c.get('status_3d'))}
         <td class="price-cell" style="white-space:nowrap;font-size:11px;color:var(--ink-faint);">{esc(start_date)} UTC</td>
       </tr>"""
 
@@ -1679,8 +1684,11 @@ def day_trade_track_record_html():
     return f"""
     <h2 class="section-title" style="margin-top:32px;">Day-trade track record</h2>
     <p class="tab-blurb">Every "Prime setup" call (day-trade score ≥ 70, watchlist and screened candidates alike),
-      graded against what price actually did ~1 day and ~3 days later — a long is "correct" if it finished up
-      from the call price, a short if it finished down. Based on {tr['snapshot_count']} snapshots.</p>
+      graded against what price actually did 1 and 3 <i>trading sessions</i> later — a long is "correct" if it
+      finished up from the call price, a short if it finished down. Sessions rather than clock hours, so a
+      Friday call is graded against Monday instead of being lost to the weekend. "pending" means that session
+      hasn't happened yet; "no data" means the ticker rotated out of the pool before it could be graded.
+      Based on {tr['snapshot_count']} snapshots.</p>
 
     <div class="summary-strip">
       <div class="summary-chip"><b>{f'{hit1:.0f}%' if hit1 is not None else '—'}</b>&nbsp;1-day hit rate</div>
