@@ -1132,6 +1132,87 @@ def backtest_tab_html(bt):
       {entry_html}
     </section>"""
 
+    rob = bt.get("period_robustness") or {}
+    rob_html = ""
+    if rob.get("rows") and not rob.get("error"):
+        pers = rob.get("periods") or []
+        head = "".join(
+            f"<th>P{i+1}<br><span style='font-weight:400;opacity:.6;font-size:9px'>"
+            f"{esc((p.get('from') or '')[:7])}&ndash;{esc((p.get('to') or '')[:7])}<br>"
+            f"coin-flip {pct(p.get('random_median_pct'))}</span></th>"
+            for i, p in enumerate(pers))
+        rrows = ""
+        ranked = sorted((r for r in rob["rows"] if r.get("avg_percentile") is not None),
+                        key=lambda r: -r["avg_percentile"])
+        best_r = ranked[0] if ranked else None
+        for r in rob["rows"]:
+            cells = ""
+            for c in r.get("periods", []):
+                if "error" in c or c.get("return_pct") is None:
+                    cells += "<td class='price-cell'>&mdash;</td>"
+                    continue
+                p = c.get("percentile")
+                tone = "pnl-good" if (p or 0) >= 50 else "pnl-bad"
+                cells += (f"<td class='price-cell mono'>{pct(c['return_pct'])}"
+                          f"<br><span class='{tone}' style='font-size:10px'>{p}th</span></td>")
+            above = (f"{r.get('periods_above_median')}/{r.get('periods_scored')}"
+                     if r.get("periods_scored") else "&mdash;")
+            avg = r.get("avg_percentile")
+            rrows += (f"<tr{HILITE if r is best_r else ''}>"
+                      f"<td class='mono'>{esc(r['label'])}"
+                      f"{' &larr; most consistent' if r is best_r else ''}</td>"
+                      f"{cells}"
+                      f"<td class='price-cell {'pnl-good' if (avg or 0) >= 50 else 'pnl-bad'}'>"
+                      f"<b>{avg}</b></td>"
+                      f"<td class='price-cell mono'>{above}</td></tr>")
+
+        ctrl = next((r for r in rob["rows"] if r.get("mode") == "any"), None)
+        weak = [r for r in rob["rows"]
+                if r.get("mode") == "weakness" and not r.get("hold_forever")
+                and r.get("avg_percentile") is not None]
+        live_r = next((r for r in rob["rows"] if "live" in r.get("label", "")), None)
+        best_weak = max(weak, key=lambda r: r["avg_percentile"]) if weak else None
+        if not (ctrl and best_weak and live_r):
+            rnote = "Read the table directly &mdash; a reference row is missing."
+        elif (best_weak["avg_percentile"] > (ctrl.get("avg_percentile") or 0) + 8
+              and best_weak.get("periods_above_median", 0) >= 3):
+            rnote = (f"<b>The weakness signal held up.</b> {esc(best_weak['label'])} averaged the "
+                     f"{best_weak['avg_percentile']}th percentile and cleared the coin-flip median in "
+                     f"{best_weak['periods_above_median']} of {best_weak['periods_scored']} periods, "
+                     f"against {ctrl['avg_percentile']} for random slot-filling. Consistent across "
+                     f"sub-periods is the strongest evidence available here &mdash; though it is still "
+                     f"one universe in one rising market.")
+        elif best_weak["avg_percentile"] > (live_r.get("avg_percentile") or 0) + 8:
+            rnote = (f"<b>Partly.</b> The best weakness rule ({best_weak['avg_percentile']}th avg) "
+                     f"still beats the live strength rule ({live_r.get('avg_percentile')}th), so the "
+                     f"sign really was backwards. But it clears the coin-flip median in only "
+                     f"{best_weak.get('periods_above_median')} of {best_weak.get('periods_scored')} "
+                     f"periods and does not clearly beat random slot-filling "
+                     f"({ctrl['avg_percentile']}th). The single-split result was flattering it.")
+        else:
+            rnote = (f"<b>It did not hold.</b> Across sub-periods the best weakness rule averages "
+                     f"{best_weak['avg_percentile']}th percentile against {ctrl['avg_percentile']}th "
+                     f"for random slot-filling. The single-split win was an artifact of that "
+                     f"particular window &mdash; exactly what this table exists to catch.")
+
+        rob_html = f"""
+    <section>
+      <h2 class="section-title">Sub-period robustness &mdash; does any of it repeat?</h2>
+      <p class="tab-blurb">The window cut into {rob.get('n_periods')} consecutive periods, every rule run in
+        each one, and each scored against coin-flip portfolios drawn from <i>that same period</i> &mdash; so a
+        good quarter for the whole market cannot flatter anything. A rule that is real clears the median in most
+        periods. A rule that wins the full window by carrying one blowout quarter shows up here and nowhere
+        else. The last rows are not entry rules: <b>hold to end</b> never sells, isolating stock selection from
+        the cost of trading, and <b>20% stop</b> loosens the stop instead.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Rule</th>{head}<th>Avg pctile</th><th>&ge;50th</th></tr></thead>
+          <tbody>{rrows}</tbody>
+        </table>
+      </div>
+      <div class="empty-note" style="margin-top:12px;">{rnote}</div>
+    </section>"""
+
     ladders = [l for l in (bt.get("ratchet_sweep") or []) if "error" not in l]
     ladder_html = ""
     if ladders:
@@ -1298,6 +1379,8 @@ def backtest_tab_html(bt):
     {give_html}
 
     {wf_html}
+
+    {rob_html}
 
     {ladder_html}
 
