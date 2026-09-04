@@ -780,7 +780,7 @@ def run():
                             # result does not change any exit rule, so without
                             # this the cache keeps serving a result that simply
                             # lacks the new field.
-                            "result_schema": 4,
+                            "result_schema": 5,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }

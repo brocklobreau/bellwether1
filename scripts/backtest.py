@@ -142,8 +142,17 @@ COST_PER_SIDE_PCT = 0.05
 # would have recovered, which is exactly what has to be measured rather than
 # argued about.
 RATCHET_LADDERS = (
-    ("live: 80/50 60/30 35/0", ((0.80, 0.50), (0.60, 0.30), (0.35, 0.00))),
-    ("earlier breakeven (+20% rung)", ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.20, 0.00))),
+    ("live (breakeven at +8.75%)", ((0.80, 0.50), (0.60, 0.30), (0.35, 0.00))),
+    ("breakeven at +5%", ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.20, 0.00))),
+    # The disciplined form of "take the 2% before it goes red": do NOT cap the
+    # trade at +2% -- just move the stop to entry once it has been +2%. A
+    # winner that keeps running is untouched (the stop only ever trails below
+    # price), while a trade that ticks +2% and reverses closes flat instead of
+    # at -10%. That is the only mechanism that captures giveback without
+    # also capping the winners that pay for everything. Its cost is real and
+    # is what this row measures: trades that dip under entry after touching
+    # +2% and would have recovered now get closed at breakeven.
+    ("breakeven at +2%", ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.08, 0.00))),
     ("tight: protect from 20%", ((0.80, 0.60), (0.60, 0.40), (0.40, 0.20), (0.20, 0.05))),
     ("very tight: 4 close rungs", ((0.70, 0.55), (0.50, 0.35), (0.30, 0.15), (0.15, 0.05))),
     ("loose: two rungs only", ((0.80, 0.40), (0.50, 0.00))),
@@ -531,7 +540,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 4,
+                   "result_schema": 5,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
