@@ -780,7 +780,7 @@ def run():
                             # result does not change any exit rule, so without
                             # this the cache keeps serving a result that simply
                             # lacks the new field.
-                            "result_schema": 5,
+                            "result_schema": 6,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
@@ -829,6 +829,23 @@ def run():
                         log(f"    green->red, was up >={g['threshold_pct']:.0f}%: "
                             f"{g['trades']} trades ({g['pct_of_all_losers']}% of losers), "
                             f"avg peak {g['avg_peak_pct']}%, ${g['giveback_dollars']:,.0f}")
+                wf = res.get("walk_forward") or {}
+                if wf.get("error"):
+                    log(f"  walk-forward: FAILED -- {wf['error']}")
+                elif wf:
+                    log(f"  walk-forward: train {wf['train_window']['from']}..{wf['train_window']['to']}"
+                        f" / test {wf['test_window']['from']}..{wf['test_window']['to']}")
+                    log(f"    picked on train: {wf['picked_on_train']} "
+                        f"({wf['picked_train_return_pct']:+.2f}% train) "
+                        f"-> {wf['picked_test_return_pct']:+.2f}% on TEST, "
+                        f"rank {wf['picked_rank_on_test']}/{wf['candidates']} out-of-sample")
+                    log(f"    best on test was {wf['best_on_test']}; "
+                        f"avg candidate {wf['avg_test_return_pct']:+.2f}%; "
+                        f"edge from tuning {wf['edge_vs_random_pick_pct']:+.2f}%; "
+                        f"rank correlation {wf['rank_correlation']}")
+                    for r in wf.get("rows", []):
+                        log(f"      {r['label']:<24} train {str(r.get('train_return_pct')):>7} "
+                            f"test {str(r.get('test_return_pct')):>7}")
                 for l in res.get("ratchet_sweep", []):
                     if "error" in l:
                         log(f"  ladder {l['label']}: ERROR {l['error']}")

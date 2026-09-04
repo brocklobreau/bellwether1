@@ -252,7 +252,8 @@ def load_series(days=730, universe=None, fetch=None, verbose=True):
 
 def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  fetch=None, verbose=True, series=None, sectors=None,
-                 vol_scaled=False, ratchet_fractions=None):
+                 vol_scaled=False, ratchet_fractions=None,
+                 date_from=None, date_to=None):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
@@ -269,6 +270,14 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
     all_dates = sorted({d for h in series.values() for d, _ in h})
     idx = {sym: {d: i for i, (d, _) in enumerate(h)} for sym, h in series.items()}
     test_dates = all_dates[WARMUP_DAYS:]
+    # Restricting the DECISION window (not the history) is what makes
+    # walk-forward possible: every ticker still carries its full price
+    # history for point-in-time technicals, but the simulation only trades
+    # inside [date_from, date_to].
+    if date_from:
+        test_dates = [d for d in test_dates if d >= date_from]
+    if date_to:
+        test_dates = [d for d in test_dates if d <= date_to]
     if not test_dates:
         raise RuntimeError("not enough history for the requested window")
 
@@ -540,7 +549,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 5,
+                   "result_schema": 6,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -560,6 +569,135 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
         "exit_reasons": reasons,
         "equity_curve": curve[::max(1, len(curve) // 300)],
         "trades": sorted(closed, key=lambda t: t["exit_date"], reverse=True)[:80],
+    }
+
+
+# --- Walk-forward validation --------------------------------------------
+#
+# Every number produced above is chosen and measured on the SAME two years.
+# Sixteen variants have now been ranked against that one window, so some of
+# the winner's margin is simply the best draw out of sixteen -- not an edge.
+# The only honest check is to choose on one stretch and grade on a stretch
+# that had no say in the choice.
+#
+# Split the decision window in half. Rank every candidate on the first half
+# (TRAIN). Then run all of them on the second half (TEST) and ask two
+# questions the in-sample tables cannot answer:
+#
+#   1. Did the train winner actually win out-of-sample?
+#   2. Does train rank predict test rank AT ALL? (Spearman across every
+#      candidate.) If that correlation is ~0, the tuning is noise and the
+#      right move is the simplest setting, not the highest-scoring one.
+#
+# A negative correlation is worse than useless: it means picking the best
+# in-sample is actively worse than picking at random.
+WALK_FORWARD_CANDIDATES = (
+    # label, stop, target, ratchet fractions (None = live ladder)
+    ("10/25 live ladder", 10.0, 25.0, None),
+    ("10/25 no ratchet", 10.0, 25.0, ()),
+    ("10/25 loose ladder", 10.0, 25.0, ((0.80, 0.40), (0.50, 0.00))),
+    ("10/25 breakeven +5%", 10.0, 25.0, ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.20, 0.00))),
+    ("10/25 breakeven +2%", 10.0, 25.0, ((0.80, 0.50), (0.60, 0.30), (0.35, 0.10), (0.08, 0.00))),
+    ("10/25 tight ladder", 10.0, 25.0, ((0.80, 0.60), (0.60, 0.40), (0.40, 0.20), (0.20, 0.05))),
+    ("10/20", 10.0, 20.0, None),
+    ("10/30", 10.0, 30.0, None),
+    ("8/24", 8.0, 24.0, None),
+    ("2.5/5", 2.5, 5.0, None),
+    ("10/10", 10.0, 10.0, None),
+)
+
+
+def _spearman(a, b):
+    """Rank correlation without scipy. Returns None if it cannot be computed."""
+    n = len(a)
+    if n < 3 or n != len(b):
+        return None
+
+    def ranks(xs):
+        order = sorted(range(n), key=lambda i: xs[i])
+        r = [0.0] * n
+        i = 0
+        while i < n:
+            j = i
+            while j + 1 < n and xs[order[j + 1]] == xs[order[i]]:
+                j += 1
+            avg = (i + j) / 2.0 + 1.0          # average rank for ties
+            for k in range(i, j + 1):
+                r[order[k]] = avg
+            i = j + 1
+        return r
+
+    ra, rb = ranks(a), ranks(b)
+    ma, mb = sum(ra) / n, sum(rb) / n
+    num = sum((ra[i] - ma) * (rb[i] - mb) for i in range(n))
+    da = sum((ra[i] - ma) ** 2 for i in range(n)) ** 0.5
+    db = sum((rb[i] - mb) ** 2 for i in range(n)) ** 0.5
+    if da == 0 or db == 0:
+        return None
+    return round(num / (da * db), 3)
+
+
+def run_walk_forward(series, sectors, days=730):
+    """Choose on the first half, grade on the second. See the note above."""
+    all_dates = sorted({d for h in series.values() for d, _ in h})
+    decision_dates = all_dates[WARMUP_DAYS:]
+    if len(decision_dates) < 120:
+        return {"error": "not enough decision days to split"}
+    mid = len(decision_dates) // 2
+    train = (decision_dates[0], decision_dates[mid - 1])
+    test = (decision_dates[mid], decision_dates[-1])
+
+    rows = []
+    for label, stop, target, fracs in WALK_FORWARD_CANDIDATES:
+        row = {"label": label, "stop_pct": stop, "target_pct": target,
+               "ratchet": "live" if fracs is None else ("none" if fracs == () else "custom")}
+        for phase, (d0, d1) in (("train", train), ("test", test)):
+            try:
+                r = run_backtest(days=days, stop_pct=stop, target_pct=target,
+                                 series=series, sectors=sectors, verbose=False,
+                                 vol_scaled=False, ratchet_fractions=fracs,
+                                 date_from=d0, date_to=d1)
+                row[f"{phase}_return_pct"] = r["total_return_pct"]
+                row[f"{phase}_trades"] = r["closed_trades"]
+                row[f"{phase}_hit_pct"] = r["hit_rate_pct"]
+                row[f"{phase}_benchmark_pct"] = r["benchmark_buy_hold_pct"]
+            except Exception as e:
+                row[f"{phase}_error"] = str(e)[:100]
+        rows.append(row)
+
+    graded = [r for r in rows if r.get("train_return_pct") is not None
+              and r.get("test_return_pct") is not None]
+    if not graded:
+        return {"error": "no candidate completed both windows"}
+
+    by_train = sorted(graded, key=lambda r: -r["train_return_pct"])
+    by_test = sorted(graded, key=lambda r: -r["test_return_pct"])
+    picked = by_train[0]
+    rho = _spearman([r["train_return_pct"] for r in graded],
+                    [r["test_return_pct"] for r in graded])
+
+    test_returns = [r["test_return_pct"] for r in graded]
+    avg_test = round(sum(test_returns) / len(test_returns), 2)
+    # The number that matters: what the in-sample winner earned out-of-sample,
+    # against what you would have got by picking a candidate at random.
+    edge = round(picked["test_return_pct"] - avg_test, 2)
+
+    return {
+        "train_window": {"from": train[0], "to": train[1]},
+        "test_window": {"from": test[0], "to": test[1]},
+        "rows": rows,
+        "picked_on_train": picked["label"],
+        "picked_train_return_pct": picked["train_return_pct"],
+        "picked_test_return_pct": picked["test_return_pct"],
+        "best_on_test": by_test[0]["label"],
+        "best_test_return_pct": by_test[0]["return_pct"] if "return_pct" in by_test[0] else by_test[0]["test_return_pct"],
+        "picked_rank_on_test": next(i + 1 for i, r in enumerate(by_test)
+                                    if r["label"] == picked["label"]),
+        "candidates": len(graded),
+        "avg_test_return_pct": avg_test,
+        "edge_vs_random_pick_pct": edge,
+        "test_benchmark_pct": picked.get("test_benchmark_pct"),
+        "rank_correlation": rho,
     }
 
 
@@ -622,6 +760,12 @@ def run_and_save(days=730, sweep=True, universe=None, fetch=None):
             except Exception as e:
                 ladders.append({"label": label, "error": str(e)[:120]})
         out["ratchet_sweep"] = ladders
+
+        # --- walk-forward: the only out-of-sample number on this page -----
+        try:
+            out["walk_forward"] = run_walk_forward(series, sectors, days=days)
+        except Exception as e:
+            out["walk_forward"] = {"error": str(e)[:160]}
     os.makedirs(os.path.dirname(RESULT_PATH), exist_ok=True)
     tmp = RESULT_PATH + ".tmp"
     with open(tmp, "w") as f:
