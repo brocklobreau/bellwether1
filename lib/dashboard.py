@@ -895,6 +895,82 @@ def backtest_tab_html(bt):
       <div class="empty-note" style="margin-top:12px;">{verdict}</div>
     </section>"""
 
+    gb = bt.get("giveback") or {}
+    give_html = ""
+    if gb.get("trades_measured"):
+        gr_rows = "".join(
+            f"<tr><td class='mono'>was up &ge; <b>{g['threshold_pct']:.0f}%</b></td>"
+            f"<td class='price-cell mono'>{g['trades']}</td>"
+            f"<td class='price-cell mono'>{g['pct_of_all_losers']}%</td>"
+            f"<td class='price-cell'>{(str(g['avg_peak_pct']) + '%') if g['avg_peak_pct'] is not None else '&mdash;'}</td>"
+            f"<td class='price-cell mono pnl-bad'>${g['giveback_dollars']:,.0f}</td></tr>"
+            for g in (gb.get("green_then_red") or []))
+        give_html = f"""
+    <section>
+      <h2 class="section-title">Giveback &mdash; green, then red</h2>
+      <p class="tab-blurb">Every trade records how far it ran in your favour before it closed.
+        Peak minus realized is exactly what was handed back. The table below is the one that
+        matters: trades that ended as losses <i>after</i> having been profitable. Those are the
+        ones a tighter gain-protection ladder could have saved &mdash; and the ones that make
+        holding a winner feel like a mistake.</p>
+      <div class="bot-stat-grid">
+        <div class="bot-stat"><span class="bot-stat-num">{gb.get('avg_giveback_pct')}%</span>
+          <span class="bot-stat-label">avg giveback per trade</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{gb.get('avg_giveback_winners_pct')}%</span>
+          <span class="bot-stat-label">given back by winners</span></div>
+        <div class="bot-stat"><span class="bot-stat-num">{gb.get('avg_giveback_losers_pct')}%</span>
+          <span class="bot-stat-label">given back by losers</span></div>
+        <div class="bot-stat"><span class="bot-stat-num pnl-bad">${gb.get('total_giveback_dollars', 0):,.0f}</span>
+          <span class="bot-stat-label">total handed back</span></div>
+      </div>
+      <div class="table-scroll" style="margin-top:14px;">
+        <table>
+          <thead><tr><th>Losing trades that&hellip;</th><th>Trades</th><th>Share of losers</th>
+            <th>Avg peak</th><th>Given back</th></tr></thead>
+          <tbody>{gr_rows}</tbody>
+        </table>
+      </div>
+      <p class="tab-blurb" style="margin-top:10px; opacity:.75">This is measured on the trades that
+        actually happened, so it sizes the prize &mdash; it does not prove a tighter ladder would
+        have captured it. An earlier exit changes every trade after it, which is what the ladder
+        comparison below actually tests.</p>
+    </section>"""
+
+    # Precomputed: an f-string expression part cannot contain a backslash,
+    # and an inline style attribute needs escaped quotes. (Third time.)
+    HILITE = ' style="background:var(--surface-2)"'
+    ladders = [l for l in (bt.get("ratchet_sweep") or []) if "error" not in l]
+    ladder_html = ""
+    if ladders:
+        best = max(ladders, key=lambda l: l.get("return_pct") or -999)
+        lrows = "".join(
+            f"<tr{HILITE if l is best else ''}>"
+            f"<td class='mono'>{esc(l['label'])}{' &larr; best' if l is best else ''}</td>"
+            f"<td class='price-cell {'pnl-good' if (l.get('return_pct') or 0) >= 0 else 'pnl-bad'}'>"
+            f"{pct(l.get('return_pct'))}</td>"
+            f"<td class='price-cell'>{pct(l.get('max_dd_pct'))}</td>"
+            f"<td class='price-cell mono'>{l.get('trades')}</td>"
+            f"<td class='price-cell mono'>{l.get('hit_rate_pct')}%</td>"
+            f"<td class='price-cell mono'>{l.get('realized_rr')}:1</td>"
+            f"<td class='price-cell mono'>{l.get('green_then_red_5')}</td></tr>"
+            for l in ladders)
+        ladder_html = f"""
+    <section>
+      <h2 class="section-title">Gain protection &mdash; ladder comparison</h2>
+      <p class="tab-blurb">The whole backtest re-run with different stop-ratchet ladders. A ladder
+        that protects earlier turns green-then-red losses into small wins &mdash; and pays for it by
+        being stopped out of trades that would have recovered and run to target. Watch the last two
+        columns move in opposite directions: that tension, not any single number, is the real
+        selling problem.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Ladder</th><th>Return</th><th>Max DD</th><th>Trades</th>
+            <th>Win rate</th><th>Realized R:R</th><th>Green&rarr;red (&ge;5%)</th></tr></thead>
+          <tbody>{lrows}</tbody>
+        </table>
+      </div>
+    </section>"""
+
     yearly = bt.get("yearly") or []
     yearly_html = ""
     if len(yearly) > 1:
@@ -924,7 +1000,6 @@ def backtest_tab_html(bt):
     </section>"""
 
     sens = bt.get("sensitivity") or []
-    HILITE = ' style="background:var(--surface-2)"'
     # One column per calendar year, so a variant that only works in one year is
     # visible as such instead of hiding inside a two-year total.
     sens_years = sorted({y.get("year") for v in sens for y in (v.get("yearly") or [])
@@ -1026,6 +1101,10 @@ def backtest_tab_html(bt):
     </section>
 
     {deploy_html}
+
+    {give_html}
+
+    {ladder_html}
 
     {yearly_html}
 
