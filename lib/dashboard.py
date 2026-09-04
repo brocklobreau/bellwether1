@@ -649,7 +649,7 @@ def bot_tab_html(botdata):
     an equity curve and buy/sell logs looks exactly like a real brokerage
     account, and it is not one."""
     if not botdata:
-        return ('<section><h2 class="section-title">Trading bot</h2>'
+        return ('<section><h2 class="section-title">Investing bot</h2>'
                 '<div class="empty-note">The bot hasn\'t run yet — it starts on the next '
                 'refresh cycle during market hours.</div></section>')
 
@@ -742,13 +742,19 @@ def bot_tab_html(botdata):
 
     return f"""
     <section>
-      <h2 class="section-title">Trading bot</h2>
+      <h2 class="section-title">Investing bot</h2>
       <div class="bot-disclaimer"><b>Paper trading — simulated money.</b> No brokerage is connected and no
         order is ever placed. It started with ${s.get('starting_equity', 0):,.0f} of pretend capital and marks
         itself to market each cycle. It is also <b>forward-tested, not backtested</b>: every decision is made
         from the data available at that moment and written down immediately, so nothing here is fitted after
         the fact — but that also means it has to earn its record in real time, and a handful of trades proves
         nothing either way.</p>
+        <p style="margin:8px 0 0"><b>Investing only, as of 4 Sep 2026.</b> It used to open day-trade
+        positions out of the same pot, competing for the same ten slots and the same risk budget. Those
+        entries are switched off, because every backtest here runs on daily closing bars and a position
+        opened and closed inside one day is invisible to a daily bar &mdash; so that half was never tested,
+        only hoped for. Day-trade signals now prove themselves on the Day Trade tab's forward record first.
+        Any day-trade position still open closes on its own original rules.</p>
       </div>
 
       <div class="bot-stat-grid">
@@ -3036,7 +3042,7 @@ def generate_html(payload=None):
         <button class="nav-btn" data-tab="daytrade" role="tab" aria-selected="false">Day Trade</button>
         <button class="nav-btn" data-tab="investing" role="tab" aria-selected="false">Investing</button>
         <button class="nav-btn" data-tab="gems" role="tab" aria-selected="false">Hidden Gems</button>
-        <button class="nav-btn" data-tab="bot" role="tab" aria-selected="false">Trading Bot</button>
+        <button class="nav-btn" data-tab="bot" role="tab" aria-selected="false">Investing Bot</button>
         <button class="nav-btn" data-tab="backtest" role="tab" aria-selected="false">Backtest</button>
         <button class="nav-btn" data-tab="portfolio" role="tab" aria-selected="false">Portfolio</button>
         <button class="nav-btn" data-tab="trackrecord" role="tab" aria-selected="false">Track Record</button>

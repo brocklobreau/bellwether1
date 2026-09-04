@@ -36,7 +36,10 @@ things that separate a durable strategy from a lucky one:
 
 Two strategies share the account, tagged per position:
   INVEST -- composite-score driven, months-long horizon, wider stop.
-  TRADE  -- day-trade-score driven, uses the computed swing levels and
+            This is the ONLY strategy that opens new positions; see
+            ENABLE_TRADE_ENTRIES for why.
+  TRADE  -- DISABLED for new entries (existing positions still exit on
+            their own rules). Day-trade-score driven, used the swing levels and
             their real measured risk/reward, short horizon.
 
 State lives in results/bot_state.json on the persistent disk, so the
@@ -139,6 +142,31 @@ INVEST_STOP_PCT = 10.0
 INVEST_TARGET_PCT = 25.0
 TRADE_STOP_PCT = 6.0          # tighter: short horizon, less room to be wrong
 TRADE_TARGET_PCT = 14.0
+
+# --- Investing-only, 2026-09-04 ------------------------------------------
+#
+# The bot used to open BOTH kinds of position out of one equity pool: INVEST
+# (composite score, 10/25 levels, weeks-long) and TRADE (day-trade score,
+# ~1-day hold). They competed for the same ten slots and the same 1%-of-
+# equity risk budget, with INVEST winning ties -- which is not a design, it
+# is two strategies sharing a wallet.
+#
+# The deciding fact is that the TRADE side was never testable. Every backtest
+# here runs on DAILY closing bars, and a position opened and closed inside one
+# day is invisible to a daily bar. So the entire measurement suite -- the
+# walk-forward, the random-portfolio benchmark, the sub-period robustness, the
+# crash windows -- describes the INVEST side only, while the TRADE side has
+# been running on nothing but hope.
+#
+# So entries are INVEST-only now. The TRADE code is gated rather than deleted:
+# testing it needs intraday bars, and if that data ever arrives this flips back
+# on rather than being rewritten from memory.
+#
+# Note that EXITS still handle strategy == "TRADE" (see check_exit). Any TRADE
+# position already open in the saved state must still be able to close on its
+# own rules; stranding live positions to make a config change is how you turn
+# a tidy-up into a bug.
+ENABLE_TRADE_ENTRIES = False
 
 
 def scaled_levels(volatility_pct, fallback_stop=INVEST_STOP_PCT):
@@ -580,8 +608,9 @@ def evaluate_entry(r):
         if rr >= MIN_ENTRY_RR:
             return ("INVEST", price, stop, target, round(rr, 2), _entry_reasons(r, "INVEST"))
 
-    # --- TRADE ---
-    if dts is not None and dts >= MIN_TRADE_SCORE and r.get("day_trade_direction") == "long":
+    # --- TRADE (disabled: see ENABLE_TRADE_ENTRIES) ---
+    if (ENABLE_TRADE_ENTRIES and dts is not None and dts >= MIN_TRADE_SCORE
+            and r.get("day_trade_direction") == "long"):
         levels = r.get("day_trade_levels") or {}
         stop = levels.get("stop")
         exit_zone = levels.get("exit_zone")
