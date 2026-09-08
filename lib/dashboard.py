@@ -1100,6 +1100,66 @@ def backtest_tab_html(bt):
         the single easiest thing to curve-fit, so the train column is context, not evidence. Only the
         test column and its percentile count &mdash; and one split is still one sample.</p>"""
 
+        # --- round-trip: sell into strength, buy back lower ---------------
+        rts = [r for r in (wf.get("roundtrip") or [])
+               if "error" not in r and r.get("test_return_pct") is not None]
+        rt_html = ""
+        if rts:
+            base_rt = next((r for r in rts if "no gate" in r.get("label", "")
+                            and "10/25" in r.get("label", "")), None)
+            best_rt = max(rts, key=lambda r: r.get("test_percentile") or -1)
+            rtrows = "".join(
+                f"<tr{HILITE if r is best_rt else ''}>"
+                f"<td class='mono'>{esc(r['label'])}"
+                f"{' &larr; best' if r is best_rt else ''}</td>"
+                f"<td class='price-cell {'pnl-good' if (r.get('train_return_pct') or 0) >= 0 else 'pnl-bad'}'>"
+                f"{pct(r.get('train_return_pct'))}</td>"
+                f"<td class='price-cell {'pnl-good' if (r.get('test_return_pct') or 0) >= 0 else 'pnl-bad'}'>"
+                f"{pct(r.get('test_return_pct'))}</td>"
+                f"<td class='price-cell {'pnl-good' if (r.get('test_percentile') or 0) >= 50 else 'pnl-bad'}'>"
+                f"<b>{r.get('test_percentile')}th</b></td>"
+                f"<td class='price-cell mono'>{r.get('test_trades')}</td>"
+                f"<td class='price-cell mono'>{r.get('gates_set', '&mdash;')}</td>"
+                f"<td class='price-cell mono'>"
+                f"{(str(r['fill_rate_pct']) + '%') if r.get('fill_rate_pct') is not None else '&mdash;'}</td></tr>"
+                for r in rts)
+            gated = [r for r in rts if r.get("fill_rate_pct") is not None]
+            avg_fill = (round(sum(r["fill_rate_pct"] for r in gated) / len(gated), 1)
+                        if gated else None)
+            best_gated = (max(gated, key=lambda r: r.get("test_percentile") or -1)
+                          if gated else None)
+            if not (base_rt and best_gated):
+                rtnote = "Read the table directly &mdash; a reference row is missing."
+            elif (best_gated.get("test_percentile") or 0) > (base_rt.get("test_percentile") or 0) + 10:
+                rtnote = (f"Selling into strength and waiting for a pullback beat holding to target "
+                          f"out-of-sample ({best_gated['test_percentile']}th vs "
+                          f"{base_rt['test_percentile']}th), and the winning row actually filled its "
+                          f"re-entries {best_gated['fill_rate_pct']}% of the time. Worth a second look.")
+            else:
+                rtnote = (f"Holding to target still wins. Across the gated rows the stock came back to "
+                          f"the buy zone only {avg_fill}% of the time on average &mdash; the rest ran away "
+                          f"after the sale, which is the whole risk of this idea: you cap the winner and "
+                          f"then never get the chance to buy it back.")
+            rt_html = f"""
+      <h2 class="section-title" style="margin-top:26px;">Sell into strength, buy back lower</h2>
+      <p class="tab-blurb">A position runs to +7% and gives it all back &mdash; so sell the strength and
+        re-buy on the dip. Plain small targets were already measured and they lose, because capping the
+        winner costs more than the giveback. What is different here is the <b>gate</b>: after selling, the
+        bot refuses to re-buy that name until it has pulled back a set amount. Without the gate it just
+        buys straight back a few cents higher, which caps the winner <i>and</i> pays the round trip.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Rule</th><th>Train</th><th>Test</th><th>Test pctile</th>
+            <th>Trades</th><th>Gates set</th><th>Filled</th></tr></thead>
+          <tbody>{rtrows}</tbody>
+        </table>
+      </div>
+      <div class="empty-note" style="margin-top:12px;">{rtnote}</div>
+      <p class="tab-blurb" style="margin-top:10px; opacity:.75"><b>Read the fill column first.</b> A high
+        return with a low fill rate is not a strategy, it is two lucky round trips &mdash; every unfilled
+        gate is a winner sold early that never came back. Gates expire after 40 sessions so a name that
+        never dips is not locked out of the universe forever.</p>"""
+
         wf_html = f"""
     <section>
       <h2 class="section-title">Walk-forward &mdash; the only out-of-sample number here</h2>
@@ -1136,6 +1196,7 @@ def backtest_tab_html(bt):
         weak at proving an edge exists.</p>
       {rand_html}
       {entry_html}
+      {rt_html}
     </section>"""
 
     st = bt.get("stress") or {}
