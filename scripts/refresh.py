@@ -17,7 +17,7 @@ import json
 import os
 import sys
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -296,21 +296,119 @@ def log(msg):
     print(f"[{ts}] {msg}", flush=True)
 
 
+# --- Market holiday calendar ---------------------------------------------
+#
+# Added 2026-09-07, after the bot ran a full cycle on Labor Day. The weekday
+# check said Monday, the clock said 11:52 ET, so it fetched quotes, made
+# decisions and opened a position -- all against Friday's closing prices,
+# because the market was shut. It also burned the weekly backtest and wrote a
+# snapshot that the day-trade grader then counted as a trading session, which
+# shifts every 1-day and 3-day horizon spanning it.
+#
+# COMPUTED rather than hardcoded. A pasted list of dates is correct until the
+# year it runs out and then fails silently, which is the worst failure shape
+# available -- the bot would just quietly trade on holidays again. All ten
+# closures are rule-based, so they can be derived for any year.
+MARKET_EARLY_CLOSE = (13, 0)   # 1:00 PM ET on the half days below
+
+
+def _easter_sunday(year):
+    """Anonymous Gregorian algorithm. Good Friday is this minus two days."""
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month, day = divmod(h + l - 7 * m + 114, 31)
+    return date(year, month, day + 1)
+
+
+def _nth_weekday(year, month, weekday, n):
+    """nth `weekday` (Mon=0) of a month; n=-1 means the last one."""
+    if n > 0:
+        d = date(year, month, 1)
+        d += timedelta(days=(weekday - d.weekday()) % 7)
+        return d + timedelta(weeks=n - 1)
+    nxt = date(year + (month == 12), (month % 12) + 1, 1)
+    d = nxt - timedelta(days=1)
+    return d - timedelta(days=(d.weekday() - weekday) % 7)
+
+
+def _observed(d, is_new_year=False):
+    """NYSE weekend rule: a Saturday holiday closes the preceding Friday, a
+    Sunday holiday closes the following Monday.
+
+    The exception is New Year's Day: when Jan 1 falls on a Saturday the
+    market does NOT close the previous Friday (31 Dec 2021 traded normally,
+    with Jan 1 2022 on a Saturday). Getting this backwards would shut the bot
+    down on a real trading day, which is the same class of bug in reverse."""
+    if d.weekday() == 5:
+        return None if is_new_year else d - timedelta(days=1)
+    if d.weekday() == 6:
+        return d + timedelta(days=1)
+    return d
+
+
+def market_holidays(year):
+    """Full-day NYSE/Nasdaq closures for `year`."""
+    out = set()
+    for d, is_ny in ((date(year, 1, 1), True), (date(year, 6, 19), False),
+                     (date(year, 7, 4), False), (date(year, 12, 25), False)):
+        obs = _observed(d, is_new_year=is_ny)
+        if obs:
+            out.add(obs)
+    # A New Year's Day falling on a Sunday closes the following Monday, which
+    # belongs to January of THIS year -- but Jan 1 of next year on a Sunday
+    # closes Jan 2 of next year, so nothing extra is needed here.
+    out.add(_nth_weekday(year, 1, 0, 3))    # MLK -- 3rd Monday of January
+    out.add(_nth_weekday(year, 2, 0, 3))    # Presidents -- 3rd Monday of February
+    out.add(_nth_weekday(year, 5, 0, -1))   # Memorial -- last Monday of May
+    out.add(_nth_weekday(year, 9, 0, 1))    # Labor -- 1st Monday of September
+    out.add(_nth_weekday(year, 11, 3, 4))   # Thanksgiving -- 4th Thursday of November
+    out.add(_easter_sunday(year) - timedelta(days=2))   # Good Friday
+    return out
+
+
+def market_early_closes(year):
+    """1:00 PM ET half days. Not closures, but the bot should not treat the
+    last three hours as live either."""
+    out = set()
+    out.add(_nth_weekday(year, 11, 3, 4) + timedelta(days=1))   # day after Thanksgiving
+    for d in (date(year, 7, 3), date(year, 12, 24)):
+        if d.weekday() < 5 and d not in market_holidays(year):
+            out.add(d)
+    return out
+
+
+def is_market_holiday(d):
+    return d in market_holidays(d.year)
+
+
 def within_market_hours(now_utc=None):
-    """True if it's currently a weekday between 9:30 AM and 4:00 PM Eastern.
-    Deliberately computed from the real America/New_York zone (not a fixed
-    UTC offset) so this is correct across the DST transition automatically
-    -- the old Claude-scheduled-task approach needed a manually-scheduled
-    one-off reminder to hand-edit its cron expression every November/March;
-    this doesn't. The GitHub Actions cron itself is intentionally wider than
-    market hours (see .github/workflows/refresh.yml) specifically so this
-    check is the actual source of truth for whether to do real work."""
+    """True if it's currently a trading session between the open and the
+    close, Eastern. Deliberately computed from the real America/New_York zone
+    (not a fixed UTC offset) so this is correct across the DST transition
+    automatically -- the old Claude-scheduled-task approach needed a
+    manually-scheduled one-off reminder to hand-edit its cron expression every
+    November/March; this doesn't. The GitHub Actions cron itself is
+    intentionally wider than market hours (see .github/workflows/refresh.yml)
+    specifically so this check is the actual source of truth for whether to do
+    real work."""
     now_utc = now_utc or datetime.now(timezone.utc)
     now_et = now_utc.astimezone(MARKET_TZ)
     if now_et.weekday() >= 5:  # Saturday=5, Sunday=6
         return False
+    today = now_et.date()
+    if is_market_holiday(today):
+        return False
+    close = (MARKET_EARLY_CLOSE if today in market_early_closes(today.year)
+             else MARKET_CLOSE)
     open_t = now_et.replace(hour=MARKET_OPEN[0], minute=MARKET_OPEN[1], second=0, microsecond=0)
-    close_t = now_et.replace(hour=MARKET_CLOSE[0], minute=MARKET_CLOSE[1], second=0, microsecond=0)
+    close_t = now_et.replace(hour=close[0], minute=close[1], second=0, microsecond=0)
     return open_t <= now_et <= close_t
 
 
@@ -448,7 +546,13 @@ def run():
 
     if not within_market_hours():
         now_et = datetime.now(timezone.utc).astimezone(MARKET_TZ)
-        log(f"Outside market hours ({now_et.strftime('%a %Y-%m-%d %H:%M %Z')}) -- skipping this run, no data touched.")
+        # Name the holiday explicitly. "Outside market hours" on a Monday
+        # lunchtime reads like a bug in the clock, which is exactly how the
+        # Labor Day run went unnoticed for three days.
+        why = ("US market holiday" if is_market_holiday(now_et.date())
+               else ("weekend" if now_et.weekday() >= 5 else "outside 9:30-16:00 ET"))
+        log(f"Outside market hours ({now_et.strftime('%a %Y-%m-%d %H:%M %Z')}, {why}) "
+            f"-- skipping this run, no data touched.")
         os.makedirs(os.path.dirname(SKIP_FLAG_PATH), exist_ok=True)
         with open(SKIP_FLAG_PATH, "w") as f:
             f.write("skipped: outside market hours\n")
