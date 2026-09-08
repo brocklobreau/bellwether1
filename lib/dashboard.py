@@ -3293,6 +3293,33 @@ def generate_html(payload=None):
     var CYCLE_MS = 6 * 60 * 1000;
     var reloaded = false;
 
+    // The `reloaded` flag alone is NOT a guard against a reload loop, which
+    // is how this page spent the Labor Day weekend re-fetching itself every
+    // five seconds: location.reload() starts a fresh page load, the flag
+    // resets to false, the data is still stale, and it schedules another one.
+    // "Once per page load" is worthless when the reload IS the next page load.
+    //
+    // The real guard has to survive the reload, so it is keyed on the data
+    // timestamp: reload at most once per distinct anchor. If the page comes
+    // back with the same anchor the reload achieved nothing and must not be
+    // repeated. When sessionStorage is unavailable we cannot remember, so we
+    // do not auto-reload at all -- a page that is one refresh behind is a far
+    // smaller problem than one hammering the server forever.
+    var RELOAD_KEY = 'bw-reload-anchor';
+
+    function reloadOnceFor(anchor, delayMs) {{
+      if (reloaded || !anchor) return;
+      var tag = String(anchor);
+      try {{
+        if (window.sessionStorage.getItem(RELOAD_KEY) === tag) return;
+        window.sessionStorage.setItem(RELOAD_KEY, tag);
+      }} catch (e) {{
+        return;               // no memory across loads -> never auto-reload
+      }}
+      reloaded = true;
+      setTimeout(function() {{ location.reload(); }}, delayMs);
+    }}
+
     function etParts(d) {{
       var f = new Intl.DateTimeFormat('en-US', {{
         timeZone: 'America/New_York', hour12: false,
@@ -3349,17 +3376,14 @@ def generate_html(payload=None):
       // unknowable from here -- rolling a days-old timestamp forward in
       // 15-minute steps produces a confident-looking number with nothing
       // behind it. Say the data is stale instead, which is the true and
-      // more useful statement, and reload once in case the server has since
-      // published something newer.
+      // more useful statement, and reload at most once per data timestamp in
+      // case the server has since published something newer.
       var age = nextAt ? (now - nextAt) : 0;
       if (!nextAt || age > 3 * interval) {{
         el.className = 'countdown is-closed';
         el.querySelector('.countdown-label').textContent = 'Data stale';
         out.textContent = nextAt ? fmt(age) + ' old' : 'unknown';
-        if (!reloaded && nextAt) {{
-          reloaded = true;
-          setTimeout(function() {{ location.reload(); }}, 5000);
-        }}
+        reloadOnceFor(nextAt, 5000);
         return;
       }}
 
@@ -3377,11 +3401,11 @@ def generate_html(payload=None):
         el.className = 'countdown is-running';
         el.querySelector('.countdown-label').textContent = 'Refreshing';
         out.textContent = 'now…';
-        // Once the cycle has had time to finish, pull the new page in. Guarded
-        // so this can only ever happen once per page load.
-        if (!reloaded && now > target + CYCLE_MS) {{
-          reloaded = true;
-          setTimeout(function() {{ location.reload(); }}, 3000);
+        // Once the cycle has had time to finish, pull the new page in. Keyed
+        // on the data timestamp, so if the server has not published anything
+        // newer this does not fire a second time.
+        if (now > target + CYCLE_MS) {{
+          reloadOnceFor(nextAt, 3000);
         }}
       }}
     }}
