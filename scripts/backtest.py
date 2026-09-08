@@ -256,7 +256,8 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                  vol_scaled=False, ratchet_fractions=None,
                  date_from=None, date_to=None,
                  entry_mode="strength", entry_threshold=None,
-                 hold_forever=False, regime_mode=None):
+                 hold_forever=False, regime_mode=None,
+                 reentry_pullback_pct=None, reentry_expiry_sessions=40):
     """Walk forward one day at a time. `fetch` is injectable so the logic can
     be tested offline against synthetic series with no network; `series` lets
     a caller supply already-downloaded history."""
@@ -298,6 +299,21 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
     # the account was actually invested while it earned it -- a strategy that
     # makes 12% while 60% in cash is a different animal from one that makes 12%
     # fully invested, and the fix for each is the opposite of the other's.
+    # Round-trip gate: after selling a name, refuse to buy it back until it
+    # has pulled back `reentry_pullback_pct` below the exit price. Without
+    # this, an exit at +6% is usually followed by an immediate re-buy a few
+    # cents higher -- the momentum score still qualifies -- which is the worst
+    # of both worlds: you capped the winner AND paid the round trip. The gate
+    # is what makes "sell into strength, buy the dip" a different strategy
+    # rather than just a smaller target.
+    #
+    # The expiry matters as much as the gate. Without one, every name that
+    # never pulls back is locked out permanently and the bot slowly runs out
+    # of universe -- which would look like the idea failing when it is really
+    # my implementation choking it.
+    reentry_gate = {}          # sym -> (price threshold, session index set)
+    gate_stats = {"gates_set": 0, "reentered": 0, "expired": 0, "blocked_days": 0}
+
     deploy_pcts = []
     open_counts = []
     cand_counts = []
@@ -348,6 +364,10 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                     "held_days": (datetime.fromisoformat(day) - datetime.fromisoformat(pos["entry_date"])).days,
                 })
                 del positions[sym]
+                if reentry_pullback_pct:
+                    reentry_gate[sym] = (fill * (1 - reentry_pullback_pct / 100.0),
+                                         len(curve))
+                    gate_stats["gates_set"] += 1
 
         equity = cash + sum(p["shares"] * (today[s][0] if s in today else p["last"])
                             for s, p in positions.items())
@@ -367,6 +387,18 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
                 break                      # no new positions while risk-off
             if sym in positions or tscore is None:
                 continue
+            gate = reentry_gate.get(sym)
+            if gate:
+                threshold, set_at = gate
+                if len(curve) - set_at >= reentry_expiry_sessions:
+                    del reentry_gate[sym]
+                    gate_stats["expired"] += 1
+                elif price > threshold:
+                    gate_stats["blocked_days"] += 1
+                    continue                      # hasn't pulled back far enough
+                else:
+                    del reentry_gate[sym]
+                    gate_stats["reentered"] += 1
             if entry_mode == "strength":
                 # The live rule: only names already scoring well, best first.
                 if tscore < entry_threshold:
@@ -462,6 +494,8 @@ def run_backtest(days=730, stop_pct=None, target_pct=None, universe=None,
         "sessions": n,
         "blocked": blockers,
         "size_reject_reasons": size_reject_reasons,
+        "reentry": (dict(gate_stats, pullback_pct=reentry_pullback_pct)
+                    if reentry_pullback_pct else None),
     }
     return _summarize(curve, closed, positions, cash, benchmark_pct,
                       first_day, last_day, stop_pct, target_pct, len(series),
@@ -588,7 +622,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 10,
+                   "result_schema": 11,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -916,6 +950,73 @@ def run_period_robustness(series, sectors, days):
     }
 
 
+# --- Round-trip experiments ----------------------------------------------
+#
+# The observed problem: a position runs to +7.5% and gives it all back. The
+# obvious response is to sell into that strength -- but the sweep already
+# measured plain small targets and they lose badly (10/5 -> +1.98%, 10/10 ->
+# +0.50%, against 10/25 -> +22.37%), because capping the winner costs more
+# than the giveback does.
+#
+# What the sweep did NOT test is the second half of the idea: sell at +6%,
+# then WAIT for a pullback before buying back in. That is a genuinely
+# different strategy from a smaller target, and its whole viability rests on
+# one question the return number alone will not answer:
+#
+#   how often does the stock actually come back to your zone?
+#
+# If it usually runs away, you have simply sold your winners early and stood
+# on the sidelines. So `reentry` stats are reported alongside the return:
+# gates set, re-entered, expired unfilled. A strategy with a great return and
+# 10% fill rate is a strategy that got lucky twice.
+ROUNDTRIP_VARIANTS = (
+    # label, stop, target, pullback required before re-entry (None = no gate)
+    ("live 10/25, no gate", 10.0, 25.0, None),
+    ("sell +6%, no gate", 10.0, 6.0, None),
+    ("sell +6%, rebuy -3%", 10.0, 6.0, 3.0),
+    ("sell +6%, rebuy -5%", 10.0, 6.0, 5.0),
+    ("sell +6%, rebuy -8%", 10.0, 6.0, 8.0),
+    ("sell +8%, rebuy -5%", 10.0, 8.0, 5.0),
+    ("sell +12%, rebuy -5%", 10.0, 12.0, 5.0),
+    ("live 10/25, rebuy -5%", 10.0, 25.0, 5.0),
+)
+
+
+def run_roundtrip_tests(series, sectors, days, train, test, kept_draws):
+    rows = []
+    for label, stop, target, pull in ROUNDTRIP_VARIANTS:
+        row = {"label": label, "stop_pct": stop, "target_pct": target,
+               "pullback_pct": pull}
+        for phase, (d0, d1) in (("train", train), ("test", test)):
+            try:
+                r = run_backtest(days=days, series=series, sectors=sectors,
+                                 verbose=False, vol_scaled=False,
+                                 stop_pct=stop, target_pct=target,
+                                 date_from=d0, date_to=d1,
+                                 reentry_pullback_pct=pull)
+                row[f"{phase}_return_pct"] = r["total_return_pct"]
+                row[f"{phase}_trades"] = r["closed_trades"]
+                row[f"{phase}_max_dd_pct"] = r["max_drawdown_pct"]
+                if phase == "test":
+                    dep = r.get("deployment") or {}
+                    row["test_invested_pct"] = dep.get("avg_invested_pct")
+                    re_ = dep.get("reentry")
+                    if re_:
+                        filled = re_["reentered"]
+                        total = re_["gates_set"]
+                        row["gates_set"] = total
+                        row["reentered"] = filled
+                        row["expired"] = re_["expired"]
+                        row["fill_rate_pct"] = (round(100.0 * filled / total, 1)
+                                                if total else None)
+            except Exception as e:
+                row[f"{phase}_error"] = str(e)[:100]
+        row["test_percentile"] = bot_percentile((kept_draws or {}).get("test_draws"),
+                                                row.get("test_return_pct"))
+        rows.append(row)
+    return rows
+
+
 # --- Walk-forward validation --------------------------------------------
 #
 # Every number produced above is chosen and measured on the SAME two years.
@@ -1105,7 +1206,13 @@ def run_walk_forward(series, sectors, days=730):
     except Exception as e:
         entry_rows = [{"label": "entry experiments failed", "error": str(e)[:140]}]
 
+    try:
+        roundtrip_rows = run_roundtrip_tests(series, sectors, days, train, test, kept_draws)
+    except Exception as e:
+        roundtrip_rows = [{"label": "roundtrip tests failed", "error": str(e)[:140]}]
+
     return {
+        "roundtrip": roundtrip_rows,
         "entry_experiments": entry_rows,
         "random_benchmark": randbench,
         "train_window": {"from": train[0], "to": train[1]},
