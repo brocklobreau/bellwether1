@@ -11,6 +11,7 @@ from lib.track_record import (
     build_track_record, STOP_LOSS_PCT, TAKE_PROFIT_PCT,
     RATCHET_STEPS, SCORE_DROP_EXIT,
 )
+from lib.bot import ratchet_rungs
 from lib.day_trade_track_record import build_day_trade_track_record
 from lib.day_trade_momentum import build_momentum
 from lib.sectors import get_sector, sector_breakdown
@@ -677,6 +678,27 @@ def bot_tab_html(botdata):
             d = p.get("days_to_earnings")
             earn_badge = (f'<br><span class="pill" style="--pill-color:var(--warning);font-size:9.5px;">'
                           f'half size · earnings {("in " + str(d) + "d") if d is not None else "soon"}</span>')
+        # Show what the ratchet has already locked in. Without this the page
+        # says "+10%" and nothing about the floor underneath it, so a winner
+        # that CANNOT become a loss still reads like something at risk -- which
+        # is exactly the anxiety that makes people sell winners early.
+        locked = p.get("stop_locked_at_pct")
+        locked_badge = ""
+        if locked is not None:
+            if locked <= 0:
+                locked_badge = ('<br><span class="pill" style="--pill-color:var(--good);'
+                                'font-size:9.5px;">stop at breakeven &middot; can\'t lose</span>')
+            else:
+                locked_badge = ('<br><span class="pill" style="--pill-color:var(--good);'
+                                f'font-size:9.5px;">+{locked:g}% locked in</span>')
+        elif p.get("peak_pct"):
+            rungs = ratchet_rungs(p.get("target_pct")) or RATCHET_STEPS
+            nxt = min((r for r in rungs if r[0] > (p.get("peak_pct") or 0)),
+                      key=lambda r: r[0], default=None)
+            if nxt:
+                locked_badge = ('<br><span style="font-size:9.5px;color:var(--ink-faint)">'
+                                f'stop lifts at +{nxt[0]:g}%</span>')
+
         strat = p.get("strategy", "")
         strat_color = "var(--accent)" if strat == "INVEST" else "var(--good)"
         return f"""
@@ -694,7 +716,7 @@ def bot_tab_html(botdata):
             <span style="color:var(--critical)">${p.get('stop_price'):,.2f}</span> /
             <span style="color:var(--good)">${p.get('target_price'):,.2f}</span><br>
             <span style="font-size:10px;color:var(--ink-faint)">{p.get('entry_rr')}:1 · risk ${p.get('risk_dollars'):,.0f}</span>
-            {earn_badge}</td>
+            {locked_badge}{earn_badge}</td>
         <td style="font-size:11px;color:var(--ink-muted);max-width:34ch;">{esc(why)}</td>
       </tr>"""
 
