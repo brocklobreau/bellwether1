@@ -1303,6 +1303,8 @@ def backtest_tab_html(bt):
                           f"<br><span class='{tone}' style='font-size:10px'>{p}th</span></td>")
             above = (f"{r.get('periods_above_median')}/{r.get('periods_scored')}"
                      if r.get("periods_scored") else "&mdash;")
+            fill = (f"{r['fill_rate_pct']}%" if r.get("fill_rate_pct") is not None
+                    else "&mdash;")
             avg = r.get("avg_percentile")
             rrows += (f"<tr{HILITE if r is best_r else ''}>"
                       f"<td class='mono'>{esc(r['label'])}"
@@ -1310,7 +1312,50 @@ def backtest_tab_html(bt):
                       f"{cells}"
                       f"<td class='price-cell {'pnl-good' if (avg or 0) >= 50 else 'pnl-bad'}'>"
                       f"<b>{avg}</b></td>"
-                      f"<td class='price-cell mono'>{above}</td></tr>")
+                      f"<td class='price-cell mono'>{above}</td>"
+                      f"<td class='price-cell mono'>{fill}</td></tr>")
+
+        gate_rows = [r for r in rob["rows"] if r.get("pullback_pct")
+                     and r.get("avg_percentile") is not None]
+        base_live = next((r for r in rob["rows"] if "live)" in r.get("label", "")), None)
+        best_gate = (max(gate_rows, key=lambda r: r["avg_percentile"])
+                     if gate_rows else None)
+        ctrl_plain = next((r for r in rob["rows"] if r.get("mode") == "any"
+                           and not r.get("pullback_pct")), None)
+        ctrl_gated = next((r for r in rob["rows"] if r.get("mode") == "any"
+                           and r.get("pullback_pct")), None)
+        gate_note = ""
+        if best_gate and base_live and base_live.get("avg_percentile") is not None:
+            lift = round(best_gate["avg_percentile"] - base_live["avg_percentile"], 1)
+            held = best_gate.get("periods_above_median", 0)
+            if lift > 8 and held >= 3:
+                gate_note = (f"<b>The re-entry gate held up.</b> {esc(best_gate['label'])} averaged the "
+                             f"{best_gate['avg_percentile']}th percentile against "
+                             f"{base_live['avg_percentile']}th ungated, and cleared the coin-flip median "
+                             f"in {held} of {best_gate.get('periods_scored')} periods. That is the first "
+                             f"change here to survive this test.")
+            elif lift > 8:
+                gate_note = (f"<b>Partly.</b> The gate still lifts the average "
+                             f"({best_gate['avg_percentile']}th vs {base_live['avg_percentile']}th) but "
+                             f"clears the median in only {held} of "
+                             f"{best_gate.get('periods_scored')} periods, so the lift is riding on one or "
+                             f"two strong stretches rather than being steady.")
+            else:
+                gate_note = (f"<b>The gate did not survive.</b> Across sub-periods it averages "
+                             f"{best_gate['avg_percentile']}th against {base_live['avg_percentile']}th "
+                             f"ungated. The single-split result was an artifact of that window, which is "
+                             f"exactly what this table is for.")
+            if ctrl_plain and ctrl_gated and ctrl_gated.get("avg_percentile") is not None:
+                ctrl_lift = round(ctrl_gated["avg_percentile"]
+                                  - (ctrl_plain.get("avg_percentile") or 0), 1)
+                if ctrl_lift > 8:
+                    gate_note += (f" Note the control: the gate lifts RANDOM slot-filling by "
+                                  f"{ctrl_lift} points too, so this looks like a mechanical effect "
+                                  f"&mdash; waiting for a pullback simply buys at better prices &mdash; "
+                                  f"rather than anything about the signal.")
+                else:
+                    gate_note += (f" The control moved only {ctrl_lift} points, so the gate is not just "
+                                  f"a generic better-entry-price effect.")
 
         ctrl = next((r for r in rob["rows"] if r.get("mode") == "any"), None)
         weak = [r for r in rob["rows"]
@@ -1352,11 +1397,13 @@ def backtest_tab_html(bt):
         the cost of trading, and <b>20% stop</b> loosens the stop instead.</p>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Rule</th>{head}<th>Avg pctile</th><th>&ge;50th</th></tr></thead>
+          <thead><tr><th>Rule</th>{head}<th>Avg pctile</th><th>&ge;50th</th>
+            <th>Gate fill</th></tr></thead>
           <tbody>{rrows}</tbody>
         </table>
       </div>
       <div class="empty-note" style="margin-top:12px;">{rnote}</div>
+      {f'<div class="empty-note" style="margin-top:10px;">{gate_note}</div>' if gate_note else ''}
     </section>"""
 
     ladders = [l for l in (bt.get("ratchet_sweep") or []) if "error" not in l]
