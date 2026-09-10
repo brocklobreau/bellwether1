@@ -1164,11 +1164,16 @@ def backtest_tab_html(bt):
                           f"then never get the chance to buy it back.")
             rt_html = f"""
       <h2 class="section-title" style="margin-top:26px;">Sell into strength, buy back lower</h2>
-      <p class="tab-blurb">A position runs to +7% and gives it all back &mdash; so sell the strength and
-        re-buy on the dip. Plain small targets were already measured and they lose, because capping the
-        winner costs more than the giveback. What is different here is the <b>gate</b>: after selling, the
-        bot refuses to re-buy that name until it has pulled back a set amount. Without the gate it just
-        buys straight back a few cents higher, which caps the winner <i>and</i> pays the round trip.</p>
+      <p class="tab-blurb">A position runs to +10% and gives it all back &mdash; so protect the gain and
+        re-buy on the dip. Two separate findings collide here. Tightening the stop ladder alone was
+        measured and it <i>lost</i>, because exiting early and buying straight back higher is the worst of
+        both worlds. The re-entry <b>gate</b> alone was the one change that helped: after any exit the bot
+        refuses to re-buy that name until it has pulled back a set amount.</p>
+      <p class="tab-blurb">So the rows are <b>paired</b> &mdash; the same ladder with and without the gate
+        &mdash; because the open question is whether a tight ladder only pays when a gate sits underneath
+        it. Ladders shown as "lock +5% at +10%" move the stop to +5% once the position has been up 10%,
+        instead of the live rule's move to breakeven at +8.75%. These are <i>trailing stops</i>, not
+        targets: a position that keeps climbing is never capped, it only exits on a pullback.</p>
       <div class="table-scroll">
         <table>
           <thead><tr><th>Rule</th><th>Train</th><th>Test</th><th>Test pctile</th>
