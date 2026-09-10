@@ -884,7 +884,7 @@ def run():
                             # result does not change any exit rule, so without
                             # this the cache keeps serving a result that simply
                             # lacks the new field.
-                            "result_schema": 12,
+                            "result_schema": 13,
                             "vol_stop_mult": trading_bot.VOL_STOP_MULT,
                             "ratchet_fractions": [list(x) for x in trading_bot.RATCHET_FRACTIONS],
                         }
@@ -1009,8 +1009,11 @@ def run():
                             ("ERR" if "error" in c or c.get("return_pct") is None
                              else f"{c['return_pct']:+.1f}%/{c.get('percentile')}th")
                             for c in r.get("periods", []))
+                        fill = (f" fill {r['fill_rate_pct']}%"
+                                if r.get("fill_rate_pct") is not None else "")
                         log(f"    {r['label']:<28} {cells}  avg {r.get('avg_percentile')} "
-                            f"above-median {r.get('periods_above_median')}/{r.get('periods_scored')}")
+                            f"above-median {r.get('periods_above_median')}/{r.get('periods_scored')}"
+                            f"{fill}")
                 for l in res.get("ratchet_sweep", []):
                     if "error" in l:
                         log(f"  ladder {l['label']}: ERROR {l['error']}")

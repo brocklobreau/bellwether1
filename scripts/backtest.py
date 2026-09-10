@@ -622,7 +622,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 12,
+                   "result_schema": 13,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -874,18 +874,33 @@ def run_stress_tests(universe=None, fetch=None, verbose=True):
 # never-trading versions of the same picks sit at the 50th by construction --
 # roughly twenty percentile points that belong to the exit machinery, not the
 # signal. These rows measure that directly.
+# Refocused 2026-09-10. The single-split roundtrip test found the re-entry
+# gate adding 8-10 points on TWO different ladders (4.31 -> 14.33 and
+# 4.18 -> 12.24), which makes it the best-supported change this project has
+# produced -- and therefore exactly the kind of result that has died here
+# before. The no-ratchet finding looked this good on one split and finished
+# 6th of 11 out-of-sample.
+#
+# So the gate now faces the test that killed it: four consecutive periods,
+# each scored against coin-flip portfolios drawn from that same period.
+#
+# `no signal + rebuy -5%` is the control that matters most. If the gate lifts
+# even RANDOM slot-filling, it is a mechanical effect -- waiting for a
+# pullback simply buys at better prices -- rather than anything to do with the
+# signal, and it should then help every variant equally. If it only lifts the
+# scored rows, that is a different and more suspicious claim.
 ROBUSTNESS_CANDIDATES = (
-    # label, entry mode, threshold, stop, hold_forever
-    ("strength >=55 (live)", "strength", 55.0, None, False),
-    ("weakness <=34", "weakness", 34.0, None, False),
-    ("weakness <=38", "weakness", 38.0, None, False),
-    ("weakness <=42", "weakness", 42.0, None, False),
-    ("weakness <=45", "weakness", 45.0, None, False),
-    ("weakness <=50", "weakness", 50.0, None, False),
-    ("no signal (random fill)", "any", None, None, False),
-    ("weakness <=45, hold to end", "weakness", 45.0, None, True),
-    ("weakness <=45, 20% stop", "weakness", 45.0, 20.0, False),
-    ("strength >=55, hold to end", "strength", 55.0, None, True),
+    # label, entry mode, threshold, stop, hold_forever, re-entry pullback
+    ("strength >=55 (live)", "strength", 55.0, None, False, None),
+    ("live + rebuy -3%", "strength", 55.0, None, False, 3.0),
+    ("live + rebuy -5%", "strength", 55.0, None, False, 5.0),
+    ("live + rebuy -8%", "strength", 55.0, None, False, 8.0),
+    ("weakness <=38", "weakness", 38.0, None, False, None),
+    ("weakness <=38 + rebuy -5%", "weakness", 38.0, None, False, 5.0),
+    ("weakness <=45 + rebuy -5%", "weakness", 45.0, None, False, 5.0),
+    ("no signal (random fill)", "any", None, None, False, None),
+    ("no signal + rebuy -5%", "any", None, None, False, 5.0),
+    ("weakness <=45, hold to end", "weakness", 45.0, None, True, None),
 )
 
 N_PERIODS = 4
@@ -912,10 +927,12 @@ def run_period_robustness(series, sectors, days):
         bench.append(rb if "error" in rb else rb)
 
     rows = []
-    for label, mode, thr, stop, hold in ROBUSTNESS_CANDIDATES:
+    for label, mode, thr, stop, hold, pull in ROBUSTNESS_CANDIDATES:
         row = {"label": label, "mode": mode, "threshold": thr,
-               "stop_pct": stop, "hold_forever": hold, "periods": []}
+               "stop_pct": stop, "hold_forever": hold,
+               "pullback_pct": pull, "periods": []}
         pcts = []
+        gates_set = gates_filled = 0
         for i, (d0, d1) in enumerate(periods):
             cell = {"from": d0, "to": d1}
             try:
@@ -923,9 +940,14 @@ def run_period_robustness(series, sectors, days):
                                  verbose=False, vol_scaled=False,
                                  date_from=d0, date_to=d1,
                                  entry_mode=mode, entry_threshold=thr,
-                                 stop_pct=stop, hold_forever=hold)
+                                 stop_pct=stop, hold_forever=hold,
+                                 reentry_pullback_pct=pull)
                 cell["return_pct"] = r["total_return_pct"]
                 cell["trades"] = r["closed_trades"]
+                re_ = (r.get("deployment") or {}).get("reentry")
+                if re_:
+                    gates_set += re_["gates_set"]
+                    gates_filled += re_["reentered"]
                 rb = bench[i]
                 if "error" not in rb:
                     cell["percentile"] = bot_percentile(rb.get("_draws"), cell["return_pct"])
@@ -934,6 +956,9 @@ def run_period_robustness(series, sectors, days):
             except Exception as e:
                 cell["error"] = str(e)[:80]
             row["periods"].append(cell)
+        if gates_set:
+            row["gates_set"] = gates_set
+            row["fill_rate_pct"] = round(100.0 * gates_filled / gates_set, 1)
         if pcts:
             row["avg_percentile"] = round(sum(pcts) / len(pcts), 1)
             row["periods_above_median"] = sum(1 for p in pcts if p >= 50)
