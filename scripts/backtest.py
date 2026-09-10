@@ -622,7 +622,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 11,
+                   "result_schema": 12,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -969,31 +969,47 @@ def run_period_robustness(series, sectors, days):
 # on the sidelines. So `reentry` stats are reported alongside the return:
 # gates set, re-entered, expired unfilled. A strategy with a great return and
 # 10% fill rate is a strategy that got lucky twice.
+# Ladders, as fractions of the 25% target: (peak reached, gain the stop locks).
+LADDER_LIVE = None                                        # 20->12.5, 15->7.5, 8.75->0
+LADDER_LOCK5 = ((0.80, 0.50), (0.60, 0.30), (0.40, 0.20))  # 20->12.5, 15->7.5, 10->5
+LADDER_LOCK4 = ((0.80, 0.50), (0.60, 0.30), (0.32, 0.16))  # ..., 8->4
+LADDER_TIGHT = ((0.80, 0.60), (0.60, 0.40), (0.40, 0.20))  # 20->15, 15->10, 10->5
+
+# Rows are deliberately PAIRED: the same ladder with and without the re-entry
+# gate. Tight ladders were already measured alone and they lost (breakeven at
+# +5% -> test +3.71 against the live ladder's +6.70), because exiting early
+# and then buying straight back higher is the worst of both worlds. The gate
+# alone was the one thing that helped (+15.49 vs +11.77). The open question
+# this table exists to answer is whether a tight ladder only pays WITH a gate
+# underneath it -- which is a different claim from either result so far, and
+# is not answerable from the two of them separately.
 ROUNDTRIP_VARIANTS = (
-    # label, stop, target, pullback required before re-entry (None = no gate)
-    ("live 10/25, no gate", 10.0, 25.0, None),
-    ("sell +6%, no gate", 10.0, 6.0, None),
-    ("sell +6%, rebuy -3%", 10.0, 6.0, 3.0),
-    ("sell +6%, rebuy -5%", 10.0, 6.0, 5.0),
-    ("sell +6%, rebuy -8%", 10.0, 6.0, 8.0),
-    ("sell +8%, rebuy -5%", 10.0, 8.0, 5.0),
-    ("sell +12%, rebuy -5%", 10.0, 12.0, 5.0),
-    ("live 10/25, rebuy -5%", 10.0, 25.0, 5.0),
+    # label, stop, target, pullback before re-entry (None = no gate), ladder
+    ("live ladder, no gate", 10.0, 25.0, None, LADDER_LIVE),
+    ("live ladder, rebuy -5%", 10.0, 25.0, 5.0, LADDER_LIVE),
+    ("lock +5% at +10%, no gate", 10.0, 25.0, None, LADDER_LOCK5),
+    ("lock +5% at +10%, rebuy -5%", 10.0, 25.0, 5.0, LADDER_LOCK5),
+    ("lock +5% at +10%, rebuy -8%", 10.0, 25.0, 8.0, LADDER_LOCK5),
+    ("lock +4% at +8%, rebuy -5%", 10.0, 25.0, 5.0, LADDER_LOCK4),
+    ("tight ladder, rebuy -5%", 10.0, 25.0, 5.0, LADDER_TIGHT),
+    ("sell +8% flat, rebuy -5%", 10.0, 8.0, 5.0, LADDER_LIVE),
 )
 
 
 def run_roundtrip_tests(series, sectors, days, train, test, kept_draws):
     rows = []
-    for label, stop, target, pull in ROUNDTRIP_VARIANTS:
+    for label, stop, target, pull, fracs in ROUNDTRIP_VARIANTS:
         row = {"label": label, "stop_pct": stop, "target_pct": target,
-               "pullback_pct": pull}
+               "pullback_pct": pull,
+               "ladder": "live" if fracs is None else str([list(x) for x in fracs])}
         for phase, (d0, d1) in (("train", train), ("test", test)):
             try:
                 r = run_backtest(days=days, series=series, sectors=sectors,
                                  verbose=False, vol_scaled=False,
                                  stop_pct=stop, target_pct=target,
                                  date_from=d0, date_to=d1,
-                                 reentry_pullback_pct=pull)
+                                 reentry_pullback_pct=pull,
+                                 ratchet_fractions=fracs)
                 row[f"{phase}_return_pct"] = r["total_return_pct"]
                 row[f"{phase}_trades"] = r["closed_trades"]
                 row[f"{phase}_max_dd_pct"] = r["max_drawdown_pct"]
