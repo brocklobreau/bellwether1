@@ -622,7 +622,7 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # fields), not just its values -- otherwise a cached result
                    # from an older schema is served forever and the new fields
                    # silently never appear. Same trap as `days` on 2026-09-02.
-                   "result_schema": 13,
+                   "result_schema": 14,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
                    "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
         "final_equity": round(final, 2),
@@ -780,13 +780,21 @@ STRESS_WINDOWS = (
     ("2018 Q4 selloff", "2018-09-04", "2019-06-28"),
 )
 
+# Refocused on the candidate config. Sub-period testing put
+# `weakness <=38 + rebuy -5%` at the 80.9th percentile, 3 of 4 periods above
+# the coin-flip median -- the best result this project has produced. The same
+# family is also the WORST thing to hold in a real decline (weakness <=45 lost
+# 18% through 2022 and drew down 34% in COVID). Those two facts have to be
+# reconciled before the config is worth running, and the regime filter is the
+# only candidate reconciliation. Hence: the config with no filter, with a
+# pause, and with a full exit, in all three crash windows.
 STRESS_VARIANTS = (
-    # label, entry mode, threshold, regime mode
-    ("live: strength >=55", "strength", 55.0, None),
-    ("strength + regime pause", "strength", 55.0, "pause"),
-    ("strength + regime exit", "strength", 55.0, "exit"),
-    ("weakness <=45", "weakness", 45.0, None),
-    ("weakness + regime exit", "weakness", 45.0, "exit"),
+    # label, entry mode, threshold, regime mode, re-entry pullback
+    ("live: strength >=55", "strength", 55.0, None, None),
+    ("strength + regime exit", "strength", 55.0, "exit", None),
+    ("candidate: weak<=38 + gate", "weakness", 38.0, None, 5.0),
+    ("candidate + regime pause", "weakness", 38.0, "pause", 5.0),
+    ("candidate + regime exit", "weakness", 38.0, "exit", 5.0),
 )
 
 # 2600 left only 48 warmup days before the 2018 window, so it was skipped.
@@ -831,13 +839,14 @@ def run_stress_tests(universe=None, fetch=None, verbose=True):
                              / (a * (1 + COST_PER_SIDE_PCT / 100.0)) - 1) * 100)
         entry["buy_hold_pct"] = round(sum(rets) / len(rets), 2) if rets else None
 
-        for label, mode, thr, regime in STRESS_VARIANTS:
+        for label, mode, thr, regime, pull in STRESS_VARIANTS:
             try:
                 r = run_backtest(days=STRESS_HISTORY_DAYS, series=series,
                                  sectors=sectors, verbose=False, vol_scaled=False,
                                  date_from=d0, date_to=d1,
                                  entry_mode=mode, entry_threshold=thr,
-                                 regime_mode=regime)
+                                 regime_mode=regime,
+                                 reentry_pullback_pct=pull)
                 dep = r.get("deployment") or {}
                 entry["variants"].append({
                     "label": label, "regime": regime or "none",
@@ -891,16 +900,19 @@ def run_stress_tests(universe=None, fetch=None, verbose=True):
 # scored rows, that is a different and more suspicious claim.
 ROBUSTNESS_CANDIDATES = (
     # label, entry mode, threshold, stop, hold_forever, re-entry pullback
-    ("strength >=55 (live)", "strength", 55.0, None, False, None),
-    ("live + rebuy -3%", "strength", 55.0, None, False, 3.0),
-    ("live + rebuy -5%", "strength", 55.0, None, False, 5.0),
-    ("live + rebuy -8%", "strength", 55.0, None, False, 8.0),
-    ("weakness <=38", "weakness", 38.0, None, False, None),
-    ("weakness <=38 + rebuy -5%", "weakness", 38.0, None, False, 5.0),
-    ("weakness <=45 + rebuy -5%", "weakness", 45.0, None, False, 5.0),
-    ("no signal (random fill)", "any", None, None, False, None),
-    ("no signal + rebuy -5%", "any", None, None, False, 5.0),
-    ("weakness <=45, hold to end", "weakness", 45.0, None, True, None),
+    # label, entry mode, threshold, stop, hold_forever, pullback, regime
+    ("strength >=55 (live)", "strength", 55.0, None, False, None, None),
+    ("live + rebuy -5%", "strength", 55.0, None, False, 5.0, None),
+    ("weakness <=38", "weakness", 38.0, None, False, None, None),
+    ("weakness <=38 + rebuy -5%", "weakness", 38.0, None, False, 5.0, None),
+    # The reconciliation attempt: does a regime filter keep the sub-period
+    # result while removing the crash exposure, or does it just cost 20 points?
+    ("candidate + regime pause", "weakness", 38.0, None, False, 5.0, "pause"),
+    ("candidate + regime exit", "weakness", 38.0, None, False, 5.0, "exit"),
+    ("weakness <=45 + rebuy -5%", "weakness", 45.0, None, False, 5.0, None),
+    ("no signal (random fill)", "any", None, None, False, None, None),
+    ("no signal + rebuy -5%", "any", None, None, False, 5.0, None),
+    ("weakness <=45, hold to end", "weakness", 45.0, None, True, None, None),
 )
 
 N_PERIODS = 4
@@ -927,10 +939,10 @@ def run_period_robustness(series, sectors, days):
         bench.append(rb if "error" in rb else rb)
 
     rows = []
-    for label, mode, thr, stop, hold, pull in ROBUSTNESS_CANDIDATES:
+    for label, mode, thr, stop, hold, pull, regime in ROBUSTNESS_CANDIDATES:
         row = {"label": label, "mode": mode, "threshold": thr,
                "stop_pct": stop, "hold_forever": hold,
-               "pullback_pct": pull, "periods": []}
+               "pullback_pct": pull, "regime": regime, "periods": []}
         pcts = []
         gates_set = gates_filled = 0
         for i, (d0, d1) in enumerate(periods):
@@ -941,7 +953,8 @@ def run_period_robustness(series, sectors, days):
                                  date_from=d0, date_to=d1,
                                  entry_mode=mode, entry_threshold=thr,
                                  stop_pct=stop, hold_forever=hold,
-                                 reentry_pullback_pct=pull)
+                                 reentry_pullback_pct=pull,
+                                 regime_mode=regime)
                 cell["return_pct"] = r["total_return_pct"]
                 cell["trades"] = r["closed_trades"]
                 re_ = (r.get("deployment") or {}).get("reentry")
