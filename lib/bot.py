@@ -168,6 +168,37 @@ TRADE_TARGET_PCT = 14.0
 # a tidy-up into a bug.
 ENABLE_TRADE_ENTRIES = False
 
+# --- Re-entry gate, 2026-09-11 --------------------------------------------
+#
+# After selling a name, do not buy it back until it has pulled back this far
+# below the exit price. Without a gate the bot sells a position and re-buys it
+# a few cents higher on the very next cycle, because the same score that
+# qualified it before still qualifies it -- paying a round trip to end up in
+# the same place.
+#
+# This is the ONLY change measured this month that improved the bot under
+# every test it was given:
+#
+#   single split      live 4.44% -> 14.43% out-of-sample (5.6th -> 38.0th pct)
+#   four sub-periods  live 27.6th -> 51.4th average percentile
+#   replication       held on two different stop ladders
+#   control           applying the gate to RANDOM slot-filling made it WORSE
+#                     (41.2 -> 38.2), so this is not a generic buy-cheaper
+#                     effect that would flatter anything
+#
+# The control is the important one. It is what separates "the gate is doing
+# something" from "waiting for a dip helps any strategy".
+#
+# Honest size of the win: it moves the bot from losing to ~72% of random
+# 10-name portfolios to roughly a coin flip. It does not make the bot beat
+# the market, and it cleared the median in only 2 of 4 periods.
+REENTRY_PULLBACK_PCT = 5.0
+# The backtest expired gates after 40 trading sessions. Live runs on calendar
+# dates, and 40 sessions is about 56 calendar days. An expiry is not optional:
+# without one, every name that never dips is locked out permanently and the
+# bot slowly starves itself of universe.
+REENTRY_EXPIRY_DAYS = 56
+
 
 def scaled_levels(volatility_pct, fallback_stop=INVEST_STOP_PCT):
     """(stop_pct, target_pct) sized to this stock's own daily range.
@@ -284,6 +315,7 @@ def new_state():
         "closed_trades": [],
         "equity_curve": [],
         "actions": [],
+        "reentry_gates": {},
         "created_at": _now(),
     }
 
@@ -301,7 +333,8 @@ def load_state():
         state["actions"] = [{"ts": _now(), "kind": "error",
                              "detail": "bot_state.json unreadable -- portfolio restarted"}]
     for key, default in (("positions", []), ("closed_trades", []),
-                         ("equity_curve", []), ("actions", [])):
+                         ("equity_curve", []), ("actions", []),
+                         ("reentry_gates", {})):
         state.setdefault(key, default)
     state.setdefault("cash", STARTING_EQUITY)
     state.setdefault("starting_equity", STARTING_EQUITY)
@@ -488,6 +521,28 @@ def check_exit(pos, price, signal, ts):
     return verdict if pos["thesis_strikes"] >= THESIS_CONFIRM_REVIEWS else None
 
 
+def _gate_active(state, ticker, price, ts):
+    """True when `ticker` is still barred from re-entry. Expired gates are
+    cleared here so the dict does not grow without bound."""
+    gates = state.setdefault("reentry_gates", {})
+    g = gates.get(ticker)
+    if not g:
+        return False
+    try:
+        set_on = datetime.fromisoformat(g["set_on"])
+        now = datetime.fromisoformat(ts)
+    except (ValueError, KeyError, TypeError):
+        gates.pop(ticker, None)          # unparseable -- fail open, never stuck
+        return False
+    if (now - set_on).days >= REENTRY_EXPIRY_DAYS:
+        gates.pop(ticker, None)
+        return False
+    if price <= g.get("threshold", 0):
+        gates.pop(ticker, None)          # pulled back far enough: let it in
+        return False
+    return True
+
+
 def _close_position(state, pos, price, reason, ts):
     proceeds = pos["shares"] * price
     state["cash"] = round(state["cash"] + proceeds, 2)
@@ -507,6 +562,14 @@ def _close_position(state, pos, price, reason, ts):
         "win": pnl_dollars > 0,
     }
     state["closed_trades"].append(trade)
+    # Arm the gate. Applies to EVERY exit reason, not just profitable ones --
+    # a name stopped out is exactly the one the score is most likely to
+    # re-qualify tomorrow at a worse price.
+    state.setdefault("reentry_gates", {})[pos["ticker"]] = {
+        "threshold": round(price * (1 - REENTRY_PULLBACK_PCT / 100.0), 4),
+        "set_on": ts,
+        "exit_price": round(price, 4),
+    }
     state["actions"].append({
         "ts": ts, "kind": "sell", "ticker": pos["ticker"], "strategy": pos["strategy"],
         "shares": pos["shares"], "price": round(price, 2),
@@ -671,8 +734,13 @@ def run_cycle(payload, state=None, ts=None):
         sector_counts[p.get("sector") or "Other"] = sector_counts.get(p.get("sector") or "Other", 0) + 1
 
     ranked = []
+    gated_now = []
     for t, r in candidates.items():
         if t in held:
+            continue
+        px = r.get("price")
+        if px and _gate_active(state, t, px, ts):
+            gated_now.append(t)
             continue
         decision = evaluate_entry(r)
         if decision:
@@ -731,6 +799,20 @@ def run_cycle(payload, state=None, ts=None):
                        + (f" — HALF SIZE, earnings in {days_to_earnings}d"
                           if near_earnings else "")),
         })
+
+    # A held-back name is a decision the bot made, so record it -- otherwise a
+    # candidate that simply never appears looks like the screener missing it.
+    if gated_now:
+        gates = state.get("reentry_gates", {})
+        shown = ", ".join(f"{t} (under ${gates[t]['threshold']:,.2f})"
+                          for t in sorted(gated_now)[:4] if t in gates)
+        if shown:
+            state["actions"].append({
+                "ts": ts, "kind": "hold",
+                "detail": (f"Waiting for a {REENTRY_PULLBACK_PCT:g}% pullback before "
+                           f"re-buying: {shown}"
+                           + (f" +{len(gated_now) - 4} more" if len(gated_now) > 4 else "")),
+            })
 
     # --- 3. Mark the books ---
     equity = equity_of(state, price_lookup)
