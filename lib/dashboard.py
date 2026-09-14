@@ -3399,10 +3399,26 @@ def generate_html(payload=None):
       }}
     }}
 
+    // The page is built from results/latest.json, so it only changes when a
+    // refresh cycle finishes. This endpoint reports that file's timestamp, so
+    // the page can KNOW a new build exists instead of reloading speculatively
+    // to find out -- which is what caused the 5-second reload loop.
+    var seenResultsAt = null;
+
+    function checkForNewBuild(d) {{
+      var t = d && d._results_generated_at;
+      if (!t) return;
+      if (seenResultsAt === null) {{ seenResultsAt = t; return; }}
+      if (t !== seenResultsAt) {{
+        seenResultsAt = t;
+        setTimeout(function() {{ location.reload(); }}, 1500);
+      }}
+    }}
+
     function poll() {{
       fetch('/api/prices', {{cache: 'no-store'}})
         .then(function(r) {{ return r.ok ? r.json() : null; }})
-        .then(function(d) {{ if (d) apply(d); }})
+        .then(function(d) {{ if (d) {{ apply(d); checkForNewBuild(d); }} }})
         .catch(function() {{ /* offline or endpoint absent: keep rendered values */ }});
     }}
     poll();
@@ -3473,7 +3489,7 @@ def generate_html(payload=None):
       var mins = parseInt(p.hour, 10) * 60 + parseInt(p.minute, 10);
       var open = 9 * 60 + 30, close = 16 * 60;
       if (dow >= 1 && dow <= 5 && mins >= open && mins < close) {{
-        return {{open: true}};
+        return {{open: true, minsSinceOpen: mins - open}};
       }}
       // Minutes until the next weekday 9:30 ET, in ET wall-clock terms.
       var wait;
@@ -3514,6 +3530,21 @@ def generate_html(payload=None):
       // more useful statement, and reload at most once per data timestamp in
       // case the server has since published something newer.
       var age = nextAt ? (now - nextAt) : 0;
+
+      // The first cycle of the day has not finished yet. Between the opening
+      // bell and that cycle completing -- 15 to 45 minutes, every single
+      // trading day -- the data is legitimately from the previous session,
+      // and calling that "Data stale" is alarming about something completely
+      // normal. After a weekend it is worse, because the age is ~66 hours.
+      // Say what is actually happening instead.
+      if (nextAt && age > 3 * interval && st.minsSinceOpen != null
+          && st.minsSinceOpen < 75) {{
+        el.className = 'countdown is-closed';
+        el.querySelector('.countdown-label').textContent = 'Updating for today';
+        out.textContent = 'first refresh running';
+        return;
+      }}
+
       if (!nextAt || age > 3 * interval) {{
         el.className = 'countdown is-closed';
         el.querySelector('.countdown-label').textContent = 'Data stale';
