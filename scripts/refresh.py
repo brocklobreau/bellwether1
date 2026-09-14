@@ -1054,6 +1054,23 @@ def run():
         except Exception as e:
             log(f"could not attach backtest results: {e}")
 
+        # --- News/intraday data reconnaissance (one-off) ---
+        # Runs once, writes results/news_probe.json, then never again unless
+        # that file is removed. It places no trades and scores nothing -- it
+        # only reports what the data plan actually supports, because a
+        # news-reaction bot is only worth designing if (a) the feed is fresh
+        # enough to react to and (b) historical news carries real timestamps
+        # so the idea can be tested rather than hoped at.
+        try:
+            from scripts import news_probe
+            if os.path.exists(news_probe.RESULT_PATH):
+                log("news probe: already run (delete results/news_probe.json to re-run)")
+            else:
+                news_probe.probe(log=log)
+        except Exception as e:
+            log(f"news probe failed (non-fatal): {e}")
+            traceback.print_exc()
+
         # --- Day-trade strategy validation ---
         # Same weekly cadence and same non-fatal guard as the investing
         # backtest above, but a completely separate module, universe and
