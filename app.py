@@ -70,6 +70,16 @@ def api_prices():
     regenerating the whole page. Cache headers off -- a cached price tick is
     a stale price tick, which is worse than none."""
     data = price_ticker.load_prices()
+    # Piggyback the results timestamp. The page already polls this endpoint
+    # every 30s, so this lets it notice a finished refresh cycle without
+    # blind-reloading to find out -- which is what produced the reload loop
+    # on 2026-09-08 and the "Data stale" confusion every morning since.
+    try:
+        with open(os.path.join(BASE, "results", "latest.json")) as f:
+            data = dict(data or {})
+            data["_results_generated_at"] = (json.load(f) or {}).get("generated_at")
+    except (OSError, ValueError):
+        pass
     resp = app.response_class(json.dumps(data), mimetype="application/json")
     resp.headers["Cache-Control"] = "no-store, max-age=0"
     return resp
