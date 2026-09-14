@@ -76,7 +76,7 @@ from lib.bot import (
     size_position, STARTING_EQUITY, RISK_PER_TRADE_PCT, MAX_POSITIONS,
     MAX_PER_SECTOR, INVEST_STOP_PCT, INVEST_TARGET_PCT,
     RATCHET_STEPS, SCORE_DROP_EXIT, THESIS_EXIT_MAX_GAIN_PCT,
-    scaled_levels, ratchet_rungs,
+    scaled_levels, ratchet_rungs, VOL_STOP_MULT, RATCHET_FRACTIONS,
 )
 
 RESULT_PATH = os.path.join(BASE, "results", "backtest.json")
@@ -624,7 +624,17 @@ def _summarize(curve, closed, positions, cash, benchmark_pct, first_day, last_da
                    # silently never appear. Same trap as `days` on 2026-09-02.
                    "result_schema": 14,
                    "sweep_variants": [list(v) for v in SWEEP_VARIANTS],
-                   "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS]},
+                   "ratchet_ladders": [lbl for lbl, _ in RATCHET_LADDERS],
+                   # These two are checked by refresh.py's cache key but were
+                   # never written here, so cached_cfg.get() returned None,
+                   # never matched the live value, and the "is the cache
+                   # stale?" test answered YES on every single cycle -- a
+                   # full 2-year backtest re-run every 15 minutes, all day,
+                   # burning API calls and delaying everything behind it.
+                   # A cache key may only reference fields the writer
+                   # actually writes. (found 2026-09-14 in the Render logs)
+                   "vol_stop_mult": VOL_STOP_MULT,
+                   "ratchet_fractions": [list(x) for x in RATCHET_FRACTIONS]},
         "final_equity": round(final, 2),
         "total_return_pct": total_return,
         "benchmark_buy_hold_pct": benchmark_pct,

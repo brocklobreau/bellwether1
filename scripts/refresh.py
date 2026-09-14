@@ -831,9 +831,21 @@ def run():
                 f"{bs['open_count']} open, {bs['closed_count']} closed, "
                 f"cash ${bs['cash']:,.2f}")
             for a in bot_state.get("actions", [])[-6:]:
-                if a.get("ts") == bot_state.get("last_run"):
+                if a.get("ts") != bot_state.get("last_run"):
+                    continue
+                # Not every action is about ONE named position. The re-entry
+                # gate records a portfolio-level "hold" listing the tickers it
+                # is waiting on inside `detail`, with no top-level ticker --
+                # and a['ticker'] on that raised KeyError, which the outer
+                # handler then reported as "bot cycle failed" even though the
+                # cycle had completed and its state was already saved. The
+                # only thing that actually failed was this log line.
+                # (found 2026-09-14 in the Render logs)
+                if a.get("ticker"):
                     log(f"  bot {a['kind'].upper()} {a['ticker']} x{a.get('shares')} "
                         f"@ ${a.get('price')} — {a.get('detail')}")
+                else:
+                    log(f"  bot {str(a.get('kind', 'note')).upper()} — {a.get('detail')}")
         except Exception as e:
             log(f"bot cycle failed (non-fatal, data refresh unaffected): {e}")
             traceback.print_exc()
