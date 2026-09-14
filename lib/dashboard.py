@@ -3135,12 +3135,18 @@ def generate_html(payload=None):
     }}
     .side-nav {{
       flex-direction: row;
-      overflow-x: auto;
-      scrollbar-width: none;
+      /* Was: a horizontal scroller with the scrollbar hidden
+         (overflow-x:auto + scrollbar-width:none). Eight tabs do not fit on a
+         phone, so the last five -- Investing Bot, Backtest, Portfolio, Track
+         Record -- sat off-screen with NOTHING on the page indicating they
+         existed or that the strip could be scrolled. The bot section was
+         effectively invisible on mobile. Wrapping shows every tab instead;
+         two short rows cost a few pixels and hide nothing. */
+      flex-wrap: wrap;
+      row-gap: 4px;
       gap: 2px;
       flex: 1;
     }}
-    .side-nav::-webkit-scrollbar {{ display: none; }}
     .nav-btn {{
       border-left: none;
       border-bottom: 2px solid transparent;
