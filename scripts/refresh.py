@@ -1042,6 +1042,130 @@ def run():
         except Exception as e:
             log(f"could not attach backtest results: {e}")
 
+        # --- Day-trade strategy validation ---
+        # Same weekly cadence and same non-fatal guard as the investing
+        # backtest above, but a completely separate module, universe and
+        # result file: nothing here can change how the live investing bot
+        # trades. It exists to answer one question before any day-trade
+        # engine is written -- does the setup score beat picking at random
+        # from the same pool of volatile names? The investing entry signal
+        # failed exactly that test (5.6th percentile of 500 coin flips), and
+        # the day-trade score has never been put through it.
+        try:
+            from scripts import daytrade_backtest as dtb
+            dt_stale = True
+            dt_reason = "no cached result"
+            if os.path.exists(dtb.RESULT_PATH):
+                dt_age = (datetime.now(timezone.utc)
+                          - datetime.fromtimestamp(os.path.getmtime(dtb.RESULT_PATH),
+                                                   tz=timezone.utc)).days
+                dt_stale = dt_age >= 7
+                dt_reason = f"cached result is {dt_age}d old"
+                if not dt_stale:
+                    try:
+                        with open(dtb.RESULT_PATH) as f:
+                            cached = json.load(f) or {}
+                        # Same trap the investing cache fell into twice: a
+                        # result whose SHAPE changed is still "fresh" by age,
+                        # so the new fields silently never appear. Version it.
+                        if cached.get("result_schema") != 1:
+                            dt_stale, dt_reason = True, "result schema changed"
+                        elif cached.get("universe_declared") != len(dtb.UNIVERSE):
+                            dt_stale, dt_reason = True, "universe changed"
+                        elif cached.get("costs_per_side_pct") != dtb.COST_PER_SIDE_PCT:
+                            dt_stale, dt_reason = True, "cost model changed"
+                    except Exception:
+                        dt_stale, dt_reason = True, "cached result unreadable"
+            if dt_stale:
+                log(f"day-trade backtest: re-running -- {dt_reason}")
+                dtr = dtb.run_and_save(days=BACKTEST_DAYS, verbose=False)
+                h = dtr["headline"]
+                ctl = dtr["control"]
+                log(f"day-trade backtest: window {dtr['window']['from']} -> "
+                    f"{dtr['window']['to']} ({dtr['window']['sessions']} sessions), "
+                    f"{dtr['universe_size']} tickers")
+                log(f"  HEADLINE {h['total_return_pct']:+.2f}% "
+                    f"(annualized {h['annualized_pct']}%), {h['trades']} trades, "
+                    f"hit {h['win_rate_pct']}%, PF {h['profit_factor']}, "
+                    f"maxDD {h['max_drawdown_pct']}%, avg hold {h['avg_hold_sessions']} "
+                    f"sessions, invested {h['avg_invested_pct']}%")
+                # Read the PER-TRADE line first. Account return rewards a
+                # strategy for trading less, which on a losing strategy looks
+                # exactly like skill -- measured on synthetic data, a scored
+                # run "beat" the control by 12 points on account return with
+                # an identical win rate, purely by making 20% fewer trades.
+                log(f"  *** PER-TRADE PERCENTILE vs {ctl['draws']} coin-flip runs: "
+                    f"{h['trade_percentile_vs_random']} *** "
+                    f"({h['avg_trade_pct']:+.3f}%/trade vs control median "
+                    f"{ctl['median_trade_pct']:+.3f}%/trade; "
+                    f"{h['trades']} trades vs control median {ctl['median_trades']})")
+                log(f"  account-return percentile: {h['percentile_vs_random']} "
+                    f"(control median {ctl['median_pct']:+.2f}%, "
+                    f"p10 {ctl['p10_pct']:+.2f}%, p90 {ctl['p90_pct']:+.2f}%); "
+                    f"control hit rate {ctl['median_win_rate_pct']}% vs ours {h['win_rate_pct']}%")
+                log(f"  buy-and-hold same universe: {dtr['buy_and_hold_pct']:+.2f}%")
+                go = dtr["gate_only"]
+                log(f"  score gate but RANDOM pick above it: "
+                    f"{go['total_return_pct']:+.2f}% (pctile {go['percentile_vs_random']}) "
+                    f"-- vs ranked {h['total_return_pct']:+.2f}%")
+                log("  exit shapes:")
+                for v in dtr["variants"]:
+                    log(f"    {v['label']}: {v['total_return_pct']:+.2f}% "
+                        f"(pctile {v['percentile_vs_random']} / per-trade "
+                        f"{v['trade_percentile_vs_random']}), {v['trades']} trades, "
+                        f"hit {v['win_rate_pct']}%, PF {v['profit_factor']}, "
+                        f"{v['avg_trade_pct']:+.3f}%/trade, mix {v['exit_mix']}")
+                log("  how long to hold:")
+                for v in dtr["hold_sweep"]:
+                    log(f"    {v['label']}: {v['total_return_pct']:+.2f}% "
+                        f"(pctile {v['percentile_vs_random']} / per-trade "
+                        f"{v['trade_percentile_vs_random']}), {v['trades']} trades, "
+                        f"hit {v['win_rate_pct']}%, PF {v['profit_factor']}")
+                log("  score threshold:")
+                for v in dtr["threshold_sweep"]:
+                    log(f"    {v['label']}: {v['total_return_pct']:+.2f}% "
+                        f"(pctile {v['percentile_vs_random']} / per-trade "
+                        f"{v['trade_percentile_vs_random']}), {v['trades']} trades, "
+                        f"hit {v['win_rate_pct']}%")
+                pr = dtr.get("period_robustness") or {}
+                if pr.get("periods"):
+                    log(f"  SUB-PERIOD ROBUSTNESS -- beat chance in "
+                        f"{pr['beat_chance_in']}/{pr['of']} periods, "
+                        f"avg percentile {pr['avg_percentile']} "
+                        f"(one period out of four proving nothing is the "
+                        f"whole reason this table exists):")
+                    for q in pr["periods"]:
+                        log(f"    period {q['period']} ({q['from']}..{q['to']}): "
+                            f"{q['return_pct']:+.2f}% vs control median "
+                            f"{q['control_median_pct']:+.2f}% -> pctile "
+                            f"{q['percentile_vs_random']} / per-trade "
+                            f"{q['trade_percentile_vs_random']} "
+                            f"({q['avg_trade_pct']:+.3f}%/trade vs "
+                            f"{q['control_median_trade_pct']:+.3f}%), "
+                            f"{q['trades']} trades, hit {q['win_rate_pct']}%, "
+                            f"PF {q['profit_factor']}")
+                wf = dtr["walk_forward"]
+                log(f"  walk-forward: rank correlation {wf['rank_correlation']} "
+                    f"between first half and second half; best in-sample "
+                    f"('{wf['best_in_sample']}') ranked {wf['its_out_of_sample_rank']}"
+                    f"/{wf['of']} out of sample")
+                for r in wf["rows"]:
+                    log(f"    {r['label']}: train {r['train_pct']:+.2f}% -> "
+                        f"test {r['test_pct']:+.2f}%")
+            else:
+                log(f"day-trade backtest: using cached result ({dt_reason})")
+        except Exception as e:
+            log(f"day-trade backtest failed (non-fatal): {e}")
+            traceback.print_exc()
+
+        try:
+            if os.path.exists(dtb_path := os.path.join(BASE, "results", "daytrade_backtest.json")):
+                with open(dtb_path) as f:
+                    payload["daytrade_backtest"] = json.load(f)
+        except Exception as e:
+            log(f"could not attach day-trade backtest results: {e}")
+
+
         save_run(payload)
         log("saved results/latest.json + history snapshot")
 

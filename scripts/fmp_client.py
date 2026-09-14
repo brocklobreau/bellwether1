@@ -169,6 +169,47 @@ def historical_price_full(symbol, from_date, to_date):
     return data if isinstance(data, list) else []
 
 
+def historical_ohlcv(symbol, from_date, to_date):
+    """Full daily bars OLDEST->NEWEST as dicts with date/open/high/low/close/volume.
+
+    historical_price_full() above returns the same rows but callers only ever
+    pulled `close` out of them. The day-trade backtest needs the rest: the
+    setup score is built from relative volume and the daily range, and exits
+    have to know whether a +6% target or a -3% stop was reachable INSIDE a
+    session -- a short-horizon trade that only ever gets graded on closes is
+    being measured on bars it would never actually have traded.
+
+    Rows missing any of the five price/volume fields are dropped rather than
+    zero-filled: a bar with a null high silently becomes a bar whose high is
+    below its close, which would make target fills unreachable and quietly
+    bias every result downward.
+    """
+    rows = fmp_rows = _get("historical-price-eod/full",
+                           {"symbol": symbol, "from": from_date, "to": to_date})
+    if isinstance(fmp_rows, dict) and "historical" in fmp_rows:
+        rows = fmp_rows["historical"]
+    if not isinstance(rows, list):
+        return []
+    out = []
+    for r in rows:
+        try:
+            bar = {
+                "date": str(r["date"])[:10],
+                "open": float(r["open"]),
+                "high": float(r["high"]),
+                "low": float(r["low"]),
+                "close": float(r["close"]),
+                "volume": float(r.get("volume") or 0),
+            }
+        except (KeyError, TypeError, ValueError):
+            continue
+        if bar["high"] < bar["low"] or bar["close"] <= 0:
+            continue
+        out.append(bar)
+    out.sort(key=lambda b: b["date"])
+    return out
+
+
 def company_screener(**params):
     data = _get("company-screener", params)
     return data if isinstance(data, list) else []
