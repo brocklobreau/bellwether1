@@ -14,6 +14,7 @@ Run locally with: python3 app.py
 Deployed on Render with: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
 (exactly one worker -- see the note above start_scheduler_once() for why)
 """
+import gzip
 import json
 import os
 import sys
@@ -25,7 +26,7 @@ from datetime import datetime, timezone
 BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 
-from flask import Flask, send_from_directory
+from flask import Flask, request, send_from_directory
 
 from scripts.refresh import run as refresh_run, log, within_market_hours
 from lib import price_ticker
@@ -49,6 +50,72 @@ WARMUP_HTML = """<!doctype html><html><head><title>Bellwether</title></head>
 <p>The first data refresh is running now (real HTTP calls to fetch and score
 every ticker take a minute or two). Refresh this page shortly.</p>
 </body></html>"""
+
+
+# --- gzip, 2026-09-14 -----------------------------------------------------
+#
+# The dashboard is one self-contained HTML file with every style, script and
+# SVG inlined, which is great for reliability and terrible for transfer size:
+# 320 KB on the wire for what compresses to 36 KB. That is 8.8x, measured on
+# the real page, for about 4ms of CPU.
+#
+# Done by hand rather than with flask-compress because it is ~25 lines and a
+# dependency that can fail to install is a worse outage than a slow page.
+#
+# Deliberately careful about three things:
+#   * 304s and redirects have no body -- compressing them produces a response
+#     with Content-Encoding set and nothing to decode, which browsers render
+#     as a blank page.
+#   * A response that is already encoded must never be double-compressed.
+#   * Content-Length has to be rewritten, or the client waits for bytes that
+#     are never coming and the page hangs instead of loading.
+COMPRESSIBLE = ("text/html", "text/css", "text/plain", "text/xml",
+                "application/javascript", "application/json", "image/svg+xml")
+COMPRESS_MIN_BYTES = 1024
+
+
+@app.after_request
+def _compress(response):
+    try:
+        accepted = request.headers.get("Accept-Encoding", "")
+        if "gzip" not in accepted.lower():
+            return response
+        if response.status_code < 200 or response.status_code >= 300:
+            return response          # 304 / 3xx / errors: no body to compress
+        if response.headers.get("Content-Encoding"):
+            return response          # already encoded -- never stack them
+        ctype = (response.headers.get("Content-Type") or "").split(";")[0].strip()
+        if ctype not in COMPRESSIBLE:
+            return response
+        # send_from_directory streams the file straight through, and
+        # get_data() on a passthrough response raises rather than returning
+        # bytes. Turning passthrough off pulls the file into memory so it can
+        # be compressed -- which is the single response we most want to
+        # compress, so bailing out here (the first version of this did) meant
+        # the dashboard shipped uncompressed while every test looked green.
+        if response.direct_passthrough:
+            response.direct_passthrough = False
+        data = response.get_data()
+        if len(data) < COMPRESS_MIN_BYTES:
+            return response          # header overhead exceeds the saving
+        packed = gzip.compress(data, 6)
+        if len(packed) >= len(data):
+            return response          # incompressible: send the original
+        response.set_data(packed)
+        response.headers["Content-Encoding"] = "gzip"
+        response.headers["Content-Length"] = str(len(packed))
+        # Caches key on encoding, or a gzipped body gets served to a client
+        # that never asked for one.
+        vary = response.headers.get("Vary")
+        if not vary:
+            response.headers["Vary"] = "Accept-Encoding"
+        elif "accept-encoding" not in vary.lower():
+            response.headers["Vary"] = vary + ", Accept-Encoding"
+    except Exception:
+        # A compression bug must never be able to take the site down. Failing
+        # here means a bigger page, not a broken one.
+        return response
+    return response
 
 
 @app.route("/")
