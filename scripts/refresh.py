@@ -1071,6 +1071,43 @@ def run():
             log(f"news probe failed (non-fatal): {e}")
             traceback.print_exc()
 
+        # One-off: what does this API key actually allow? Measured, not read
+        # off a pricing page -- the two disagreed.
+        try:
+            from scripts import news_probe as _np2
+            if os.path.exists(_np2.PLAN_PATH):
+                log("plan probe: already run (delete results/plan_capabilities.json to re-run)")
+            else:
+                _np2.probe_plan(log=log)
+        except Exception as e:
+            log(f"plan probe failed (non-fatal): {e}")
+            traceback.print_exc()
+
+        # One API call per cycle, building a real delivery-latency picture
+        # over time (a single sample cannot tell a fast feed from a quiet one).
+        try:
+            from scripts import news_probe as _np
+            _np.track_latency(log=log)
+        except Exception as e:
+            log(f"news latency tracker failed (non-fatal): {e}")
+
+        # --- News -> price study (one-off) ---
+        # Runs once, writes results/news_study.json. Places no trades.
+        # The probe established that the LIVE feed on this plan is ~4 hours
+        # stale, so a reaction bot cannot be built on it -- but historical
+        # headlines carry real timestamps and 5-minute bars go back 400+
+        # days, so whether a faster feed would be WORTH BUYING is now a
+        # measurable question instead of a guess. That is what this answers.
+        try:
+            from scripts import news_study
+            if os.path.exists(news_study.RESULT_PATH):
+                log("news study: already run (delete results/news_study.json to re-run)")
+            else:
+                news_study.run_study(log=log)
+        except Exception as e:
+            log(f"news study failed (non-fatal): {e}")
+            traceback.print_exc()
+
         # --- Day-trade strategy validation ---
         # Same weekly cadence and same non-fatal guard as the investing
         # backtest above, but a completely separate module, universe and
