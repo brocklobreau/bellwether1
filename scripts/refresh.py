@@ -1076,10 +1076,21 @@ def run():
         # credentials are not set, so it costs nothing until you add them.
         try:
             from scripts import alpaca_probe
+            # Re-runs whenever the probe's own schema changes, so an upgraded
+            # measurement is not skipped by a result file from the old one.
+            # (The first run answered latency off a single headline; measuring
+            # VOLUME needed a longer window and a healthy-vs-broken check.)
+            need = True
             if os.path.exists(alpaca_probe.RESULT_PATH):
-                log("alpaca probe: already run (delete results/alpaca_probe.json to re-run)")
-            else:
+                try:
+                    with open(alpaca_probe.RESULT_PATH) as _f:
+                        need = (json.load(_f) or {}).get("probe_version") != alpaca_probe.PROBE_VERSION
+                except Exception:
+                    need = True
+            if need:
                 alpaca_probe.probe(log=log)
+            else:
+                log("alpaca probe: already run (delete results/alpaca_probe.json to re-run)")
         except Exception as e:
             log(f"alpaca probe failed (non-fatal): {e}")
             traceback.print_exc()

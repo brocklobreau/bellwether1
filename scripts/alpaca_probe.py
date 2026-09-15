@@ -34,8 +34,14 @@ RESULT_PATH = os.path.join(BASE, "results", "alpaca_probe.json")
 NEWS_WS = "wss://stream.data.alpaca.markets/v1beta1/news"
 NEWS_REST = "https://data.alpaca.markets/v1beta1/news"
 
-LISTEN_SECONDS = 150          # long enough to catch real headlines in market hours
-MAX_SAMPLES = 60
+LISTEN_SECONDS = 600          # latency needs one headline; VOLUME needs many.
+                              # The first run answered latency (0.23s) off a single
+                              # article in 150s -- decisive for speed, useless for
+                              # throughput. A news site with a trickle of stories is
+                              # an empty news site, so this window is long enough to
+                              # count headlines per minute as well.
+MAX_SAMPLES = 300
+PROBE_VERSION = 2
 
 
 def _creds():
@@ -135,11 +141,26 @@ def _ws_check(kid, sec, log):
         ws.settimeout(10)
         deadline = time.time() + LISTEN_SECONDS
         samples, seen_symbols = [], 0
+        timeouts, errors, other_types = 0, 0, {}
         while time.time() < deadline and len(samples) < MAX_SAMPLES:
             try:
                 raw = ws.recv()
-            except Exception:
-                continue                      # idle timeout: just keep waiting
+            except Exception as e:
+                # A recv timeout means the feed is simply quiet and we keep
+                # waiting. Anything ELSE means the socket is broken, and the
+                # original version of this loop treated both the same -- so a
+                # dead connection would spin silently for the whole window and
+                # report "quiet feed", which is a completely different finding.
+                name = type(e).__name__.lower()
+                if "timeout" in name:
+                    timeouts += 1
+                    continue
+                errors += 1
+                out["recv_error"] = f"{type(e).__name__}: {str(e)[:120]}"
+                if errors >= 3:
+                    log(f"  WS: socket errored {errors}x ({out['recv_error']}) -- stopping")
+                    break
+                continue
             arrived = datetime.now(timezone.utc)
             try:
                 msgs = json.loads(raw)
@@ -149,6 +170,8 @@ def _ws_check(kid, sec, log):
                 msgs = [msgs]
             for m in msgs:
                 if m.get("T") != "n":
+                    t = str(m.get("T"))
+                    other_types[t] = other_types.get(t, 0) + 1
                     continue
                 out["articles"] += 1
                 if m.get("symbols"):
@@ -166,6 +189,11 @@ def _ws_check(kid, sec, log):
         out["ok"] = True
         out["samples_sec"] = samples
         out["with_symbols"] = seen_symbols
+        out["listen_seconds"] = LISTEN_SECONDS
+        out["idle_timeouts"] = timeouts
+        out["recv_errors"] = errors
+        out["non_news_messages"] = other_types
+        out["headlines_per_min"] = round(out["articles"] / (LISTEN_SECONDS / 60.0), 2)
     except Exception as e:
         out["error"] = str(e)[:200]
         log(f"  WS: failed -- {str(e)[:160]}")
@@ -186,7 +214,8 @@ def probe(log=print):
         return None
 
     log("alpaca probe: checking whether the news stream is real-time and accessible")
-    out = {"probed_at": datetime.now(timezone.utc).isoformat()}
+    out = {"probed_at": datetime.now(timezone.utc).isoformat(),
+           "probe_version": PROBE_VERSION}
     out["rest"] = _rest_check(kid, sec, log)
     out["ws"] = _ws_check(kid, sec, log)
 
@@ -205,8 +234,13 @@ def probe(log=print):
             f"{LISTEN_SECONDS}s; delivery latency fastest {lat['fastest_sec']}s, "
             f"median {lat['median_sec']}s "
             f"({out['ws'].get('with_symbols', 0)} carried ticker tags)")
-        log(f"  For comparison, FMP measured 636s (10.6 min) at its fastest. "
-            f"Anything under ~5s here means the news site is viable.")
+        log(f"  For comparison, FMP measured 636s (10.6 min) at its fastest.")
+        w = out["ws"]
+        log(f"  VOLUME: {w.get('headlines_per_min')} headlines/min over "
+            f"{w.get('listen_seconds')}s ({w['articles']} total, "
+            f"{w.get('with_symbols', 0)} with tickers). "
+            f"{w.get('idle_timeouts', 0)} idle waits, {w.get('recv_errors', 0)} socket errors, "
+            f"other message types: {w.get('non_news_messages') or 'none'}")
     else:
         log("alpaca probe VERDICT: no headlines captured. Either the market is "
             "quiet right now, the subscription was rejected, or news is gated "
