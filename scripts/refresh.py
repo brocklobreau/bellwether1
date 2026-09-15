@@ -1071,6 +1071,19 @@ def run():
             log(f"news probe failed (non-fatal): {e}")
             traceback.print_exc()
 
+        # One-off: is Alpaca's news stream real-time? Decides whether the
+        # news-site project is viable. Skips itself silently when the
+        # credentials are not set, so it costs nothing until you add them.
+        try:
+            from scripts import alpaca_probe
+            if os.path.exists(alpaca_probe.RESULT_PATH):
+                log("alpaca probe: already run (delete results/alpaca_probe.json to re-run)")
+            else:
+                alpaca_probe.probe(log=log)
+        except Exception as e:
+            log(f"alpaca probe failed (non-fatal): {e}")
+            traceback.print_exc()
+
         # One-off: what does this API key actually allow? Measured, not read
         # off a pricing page -- the two disagreed.
         try:
